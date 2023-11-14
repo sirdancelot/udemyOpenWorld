@@ -1,6 +1,7 @@
 #include "Item.h"
 #include "DebugMacros.h"
 #include "Components/SphereComponent.h"
+#include "Rashepur/Characters/HeroCharacter.h"
 
 AItem::AItem()
 {
@@ -25,18 +26,20 @@ void AItem::BeginPlay()
 void AItem::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	const FString OtherActorName = OtherActor->GetName();
-	if (GEngine)
+	AHeroCharacter* Hero = Cast<AHeroCharacter>(OtherActor);
+	if (Hero)
 	{
-		GEngine->AddOnScreenDebugMessage(1, 30.f, FColor::Red, OtherActorName);
+		Hero->SetOverlappingItem(this);
 	}
 }
 
 void AItem::OnSphereOverlapEnd(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp, int32 OtherBodyIndex)
 {
 	const FString OtherActorName = OtherActor->GetName();
-	if (GEngine)
+	AHeroCharacter* Hero = Cast<AHeroCharacter>(OtherActor);
+	if (Hero)
 	{
-		GEngine->AddOnScreenDebugMessage(1, 30.f, FColor::Blue, OtherActorName);
+		Hero->SetOverlappingItem(nullptr);
 	}
 }
 
@@ -46,3 +49,12 @@ void AItem::Tick(float DeltaTime)
 	RunningTime += DeltaTime;
 }
 
+float AItem::TransformedSin()
+{
+	return Amplitude * FMath::Sin(RunningTime * TimeConstant);
+}
+
+float AItem::TransformedCos()
+{
+	return Amplitude * FMath::Cos(RunningTime * TimeConstant);
+}

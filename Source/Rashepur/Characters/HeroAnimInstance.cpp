@@ -24,6 +24,7 @@ void UHeroAnimInstance::NativeUpdateAnimation(float DeltaTime)
     {
         GroundSpeed = UKismetMathLibrary::VSizeXY(HeroCharacterMovement->Velocity);
         IsFalling = HeroCharacterMovement->IsFalling();
+        CharacterState = HeroCharacter->GetCharacterState();
     }
 
 }

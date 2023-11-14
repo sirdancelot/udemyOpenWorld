@@ -6,12 +6,16 @@
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "HeroCharacter.generated.h"
+#include "CharacterStates.h"
 
 class USpringArmComponent;
 class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 class UGroomComponent;
+class AItem;
+
+
 
 UCLASS()
 class RASHEPUR_API AHeroCharacter : public ACharacter
@@ -21,7 +25,8 @@ class RASHEPUR_API AHeroCharacter : public ACharacter
 public:
 	// Sets default values for this character's properties
 	AHeroCharacter();
-
+	// Called to bind functionality to input
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -30,12 +35,7 @@ protected:
 	virtual void Tick(float DeltaTime) override;
 	void Move(const FInputActionValue& Value);
 	void LookAround(const FInputActionValue& Value);
-//	void Jump(const FInputActionValue& Value);
-
-
-public:	
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	void EquipItem(const FInputActionValue& Value);
 
 private: 
 
@@ -51,6 +51,9 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* JumpAction;
 
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* EquipAction;
+
 	UPROPERTY(VisibleAnywhere)
 	USpringArmComponent* SpringArm;
 
@@ -63,5 +66,13 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	UGroomComponent* EyeBrows;
 
+	UPROPERTY(VisibleInstanceOnly)
+	AItem* OverlappingItem;
+
+	ECharacterState CharacterState = ECharacterState::ECS_Unequipped;
+
+public:	
+	FORCEINLINE void SetOverlappingItem(AItem* Item) { OverlappingItem = Item; }
+	FORCEINLINE void GetCharacterState() const { return CharacterState; }
 
 };
