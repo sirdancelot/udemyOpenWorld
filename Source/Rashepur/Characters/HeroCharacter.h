@@ -2,11 +2,11 @@
 
 #pragma once
 
+#include "CharacterStates.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "HeroCharacter.generated.h"
-#include "CharacterStates.h"
 
 class USpringArmComponent;
 class UCameraComponent;
@@ -73,6 +73,6 @@ private:
 
 public:	
 	FORCEINLINE void SetOverlappingItem(AItem* Item) { OverlappingItem = Item; }
-	FORCEINLINE void GetCharacterState() const { return CharacterState; }
+	FORCEINLINE ECharacterState GetCharacterState() const { return CharacterState; }
 
 };
