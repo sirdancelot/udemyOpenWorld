@@ -18,6 +18,8 @@ void AItem::BeginPlay()
 	Super::BeginPlay();
 
 	Sphere->OnComponentBeginOverlap.AddDynamic(this, &AItem::OnSphereOverlap);
+	Sphere->OnComponentEndOverlap.AddDynamic(this, &AItem::OnSphereOverlapEnd);
+
 }
 
 void AItem::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -26,6 +28,15 @@ void AItem::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* Ot
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(1, 30.f, FColor::Red, OtherActorName);
+	}
+}
+
+void AItem::OnSphereOverlapEnd(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp, int32 OtherBodyIndex)
+{
+	const FString OtherActorName = OtherActor->GetName();
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(1, 30.f, FColor::Blue, OtherActorName);
 	}
 }
 
