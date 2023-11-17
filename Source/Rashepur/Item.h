@@ -8,6 +8,12 @@
 
 class USphereComponent;
 
+enum class EItemState : uint8
+{
+	EIS_Hovering,
+	EIS_Equipped
+};
+
 UCLASS()
 class RASHEPUR_API AItem : public AActor
 {
@@ -50,9 +56,11 @@ protected:
 	UFUNCTION()
 	virtual void OnSphereOverlapEnd( UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
-private:
+	EItemState ItemState = EItemState::EIS_Hovering;
+
 	UPROPERTY(VisibleAnywhere)
 	USphereComponent* Sphere;
+
 };
 
 template<typename T>

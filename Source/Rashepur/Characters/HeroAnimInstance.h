@@ -23,7 +23,7 @@ public:
 	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float DeltaTime);
 
-	UPROPERTY(BlueprintReadOnly, Category = "Movement")
+	UPROPERTY(BlueprintReadOnly, Category = "AnimInstance")
 	AHeroCharacter* HeroCharacter;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Movement" )

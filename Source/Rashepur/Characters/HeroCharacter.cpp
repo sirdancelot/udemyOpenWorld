@@ -10,6 +10,7 @@
 #include "GroomComponent.h"
 #include "Rashepur/Item.h"
 #include "Rashepur/Weapons/Weapon.h"
+#include "Animation/AnimMontage.h"
 
 // Sets default values
 AHeroCharacter::AHeroCharacter()
@@ -39,6 +40,8 @@ AHeroCharacter::AHeroCharacter()
 	EyeBrows->SetupAttachment(GetMesh());
 	EyeBrows->AttachmentName = FString("head");
 
+	//torna o status do personagem para desocupado ao final das montagens
+	EndMontageDelegate.BindUObject(this, &AHeroCharacter::OnActionEnded);
 }
 
 // Called when the game starts or when spawned
@@ -66,6 +69,7 @@ void AHeroCharacter::Tick(float DeltaTime)
 
 void AHeroCharacter::Move(const FInputActionValue &Value)
 {
+	if (ActionState != EActionState::EAS_Unoccupied) return;
 	const FVector2D MovementVector = Value.Get<FVector2D>();
 	const FRotator ControlRotation = GetControlRotation();
 	const FRotator YawRotation(0.f, ControlRotation.Yaw, 0.f);
@@ -89,14 +93,103 @@ void AHeroCharacter::LookAround(const FInputActionValue &Value)
 	}
 }
 
-void AHeroCharacter::EquipItem(const FInputActionValue &Value)
+void AHeroCharacter::EKeyPressed(const FInputActionValue &Value)
 {
 	AWeapon* OverlappingWeapon = Cast<AWeapon>(OverlappingItem);
 	if (OverlappingWeapon)
 	{
 		OverlappingWeapon->Equip(GetMesh(), FName("RightHandSocket"));
 		CharacterState = ECharacterState::ECS_EquippedOneHandedWeapon;
+		OverlappingItem = nullptr; // reseta o ponteiro para o item que foi pego
+		EquippedWeapon = OverlappingWeapon;
 	}
+	else
+	{
+		if (CanUnequip()) 
+		{ 
+			CharacterState = ECharacterState::ECS_Unequipped;
+			PlayEActionMontage("Unequip");
+			ActionState = EActionState::EAS_PerformingAction;
+		} 
+		else if (CanEquip()) 
+		{
+			CharacterState = ECharacterState::ECS_EquippedOneHandedWeapon;
+			PlayEActionMontage("Equip");
+			ActionState = EActionState::EAS_PerformingAction;
+		}
+	}
+}
+
+void AHeroCharacter::Attack(const FInputActionValue &Value)
+{
+	if ((ActionState == EActionState::EAS_Unoccupied) && (CharacterState != ECharacterState::ECS_Unequipped))
+	{
+		PlayAttackMontage();
+	}
+}
+
+bool AHeroCharacter::CanUnequip()
+{
+    return ActionState == EActionState::EAS_Unoccupied 
+			&& CharacterState != ECharacterState::ECS_Unequipped;
+}
+
+void AHeroCharacter::Disarm()
+{
+	if (EquippedWeapon) EquippedWeapon->AttachMeshSocket(GetMesh(), FName("SpineSocket"));
+}
+
+void AHeroCharacter::EquipWeapon()
+{
+	if (EquippedWeapon) EquippedWeapon->AttachMeshSocket(GetMesh(), FName("RightHandSocket"));
+}
+
+bool AHeroCharacter::CanEquip()
+{
+    return ActionState == EActionState::EAS_Unoccupied 
+			&& CharacterState == ECharacterState::ECS_Unequipped 
+			&& EquippedWeapon;
+}
+
+void AHeroCharacter::PlayAttackMontage()
+{
+	ActionState = EActionState::EAS_Occupied;
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && AttackMontage)
+	{
+		AnimInstance->Montage_Play(AttackMontage, AttackAnimationSpeed);
+		int32 Selection = FMath::RandRange(0,1);
+		FName SectionName = FName();
+		switch (Selection)
+		{
+			case 0:
+				SectionName = FName ("Attack1");
+				break;
+			case 1:
+				SectionName = FName ("Attack2");
+				break;
+			default:
+				break;
+		}
+		AnimInstance->Montage_JumpToSection(SectionName, AttackMontage);
+		AnimInstance->Montage_SetEndDelegate(EndMontageDelegate);
+	}
+}
+void AHeroCharacter::PlayEActionMontage(FName SectionName)
+{
+	ActionState = EActionState::EAS_Occupied;
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && EActionMontage)
+	{
+		AnimInstance->Montage_Play(EActionMontage, AttackAnimationSpeed);
+		AnimInstance->Montage_JumpToSection(SectionName, EActionMontage);
+		AnimInstance->Montage_SetEndDelegate(EndMontageDelegate);
+	}
+}
+
+void AHeroCharacter::OnActionEnded(UAnimMontage *Montage, bool bInterrupted)
+{
+	ActionState = EActionState::EAS_Unoccupied;
 }
 
 // Called to bind functionality to input
@@ -110,7 +203,8 @@ void AHeroCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		EnhancedInputComponent->BindAction(MovementAction, ETriggerEvent::Triggered, this, &AHeroCharacter::Move);
 		EnhancedInputComponent->BindAction(LookAroundAction, ETriggerEvent::Triggered, this, &AHeroCharacter::LookAround);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
-		EnhancedInputComponent->BindAction(EquipAction, ETriggerEvent::Triggered, this, &AHeroCharacter::EquipItem);
+		EnhancedInputComponent->BindAction(EKeyPressAction, ETriggerEvent::Triggered, this, &AHeroCharacter::EKeyPressed);
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &AHeroCharacter::Attack);
 	}
 
 }

@@ -14,8 +14,8 @@ class UInputMappingContext;
 class UInputAction;
 class UGroomComponent;
 class AItem;
-
-
+class UAnimMontage;
+class AWeapon;
 
 UCLASS()
 class RASHEPUR_API AHeroCharacter : public ACharacter
@@ -33,10 +33,30 @@ protected:
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	/** 
+	 * Callback to inputs
+	*/
 	void Move(const FInputActionValue& Value);
 	void LookAround(const FInputActionValue& Value);
-	void EquipItem(const FInputActionValue& Value);
+	void EKeyPressed(const FInputActionValue& Value);
+	void Attack(const FInputActionValue& Value);
+	void PlayEActionMontage(FName SectionName);
+	bool CanEquip();
+	bool CanUnequip();
+	
+	UFUNCTION(BlueprintCallable)	
+	void Disarm();
 
+	UFUNCTION(BlueprintCallable)	
+	void EquipWeapon();
+
+	/**
+	 * Animation Montages
+	*/
+	void PlayAttackMontage();
+	void OnActionEnded(UAnimMontage* Montage, bool bInterrupted);
+	
 private: 
 
 	UPROPERTY(EditAnywhere, Category = "Input")
@@ -52,7 +72,10 @@ private:
 	UInputAction* JumpAction;
 
 	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* EquipAction;
+	UInputAction* EKeyPressAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* AttackAction;
 
 	UPROPERTY(VisibleAnywhere)
 	USpringArmComponent* SpringArm;
@@ -71,8 +94,27 @@ private:
 
 	ECharacterState CharacterState = ECharacterState::ECS_Unequipped;
 
+	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	EActionState ActionState = EActionState::EAS_Unoccupied;
+
+	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"), Category = "Animation")
+	float AttackAnimationSpeed = 1.5f;
+
+	/** Animation Montages */
+	UPROPERTY(EditDefaultsOnly, Category = "Montages")
+	UAnimMontage* AttackMontage;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Montages")
+	UAnimMontage* EActionMontage;
+
+	FOnMontageEnded EndMontageDelegate;
+	
+	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Weapon")
+	AWeapon* EquippedWeapon;
+
 public:	
 	FORCEINLINE void SetOverlappingItem(AItem* Item) { OverlappingItem = Item; }
 	FORCEINLINE ECharacterState GetCharacterState() const { return CharacterState; }
-
+	UFUNCTION(BlueprintPure)
+	FORCEINLINE AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
 };
