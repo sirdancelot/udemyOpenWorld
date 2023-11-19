@@ -9,3 +9,10 @@ Intermediate/
 udemyOpenWorld/
 .gitignore
 .ignore
+/.vs
+/.editorconfig
+/.vsconfig
+/Rashepur.code-workspace
+/Rashepur.sln
+/Rashepur.uproject
+/shadertoolsconfig.json
