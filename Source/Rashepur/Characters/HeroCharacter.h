@@ -44,7 +44,7 @@ protected:
 	void LookAround(const FInputActionValue& Value);
 	void EKeyPressed(const FInputActionValue& Value);
 	void Attack(const FInputActionValue& Value);
-	void PlayEActionMontage(FName SectionName);
+	void PlayEActionMontage(const FName& SectionName);
 	bool CanEquip();
 	bool CanUnequip();
 	

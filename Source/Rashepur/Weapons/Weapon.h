@@ -23,7 +23,9 @@ public:
 	void Equip(USceneComponent* InParent, FName InSocketName);
     void PlayEquipSound();
     void AttachMeshSocket(USceneComponent *InParent, const FName &InSocketName);
-     
+    virtual void Tick(float DeltaTime) override;
+    TArray<AActor*> IgnoreActors;
+
 protected:
     virtual void BeginPlay() override;
     virtual void OnSphereOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult) override;
@@ -47,6 +49,7 @@ private:
 
     UPROPERTY(VisibleAnywhere)
     USceneComponent* BoxTraceEnd;
+
 
 
 public:

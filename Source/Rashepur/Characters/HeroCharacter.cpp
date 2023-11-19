@@ -176,7 +176,7 @@ void AHeroCharacter::PlayAttackMontage()
 		AnimInstance->Montage_SetEndDelegate(EndMontageDelegate);
 	}
 }
-void AHeroCharacter::PlayEActionMontage(FName SectionName)
+void AHeroCharacter::PlayEActionMontage(const FName& SectionName)
 {
 	ActionState = EActionState::EAS_Occupied;
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -214,6 +214,7 @@ void AHeroCharacter::SetWeaponCollisionEnabled(ECollisionEnabled::Type Collision
     if (EquippedWeapon && EquippedWeapon->GetWeaponBox())
 	{
 		EquippedWeapon->GetWeaponBox()->SetCollisionEnabled(CollisionEnabled);
+		EquippedWeapon->IgnoreActors.Empty();
 	}
 }
 

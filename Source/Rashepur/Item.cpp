@@ -50,6 +50,8 @@ void AItem::Tick(float DeltaTime)
 	if (ItemState == EItemState::EIS_Hovering)
 	{
 		AddActorWorldOffset(FVector(0.f, 0.f, TransformedSin()));
+		FRotator SpinWeapon = FRotator(0.f, 3.f, 0.f);
+		AddActorWorldRotation(SpinWeapon);
 	}
 }
 
