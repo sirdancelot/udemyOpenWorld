@@ -14,7 +14,7 @@ AWeapon::AWeapon()
 {
     WeaponBox = CreateDefaultSubobject<UBoxComponent>(TEXT("Weapon Box"));
     WeaponBox->SetupAttachment(GetRootComponent());
-    WeaponBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     WeaponBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
     WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
 
@@ -33,6 +33,7 @@ void AWeapon::Equip(USceneComponent* InParent, FName InSocketName)
     if (Sphere)
     {
         Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        
     }
 }
 
@@ -98,13 +99,14 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent *OverlappedComponent, AActor *Oth
                                         BoxHit,
                                         true
     );
-    if (BoxHit.GetActor()) // vai ser nulo se não acertar nada
+    if (BoxHit.GetActor()) // vai ser nulo se nï¿½o acertar nada
     {
         IHitInterface* HitInterface = Cast<IHitInterface>(BoxHit.GetActor()); // se o ator implementa a interface de objetos "hitaveis" retorna algo, senao null
         if (HitInterface)
         {
-            HitInterface->GetHit(BoxHit.ImpactPoint);
+            HitInterface->Execute_GetHit(BoxHit.GetActor(), BoxHit.ImpactPoint);
         }
         IgnoreActors.AddUnique(BoxHit.GetActor());
+        CreateFields(BoxHit.ImpactPoint);
     }
 }

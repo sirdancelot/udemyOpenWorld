@@ -142,7 +142,12 @@ void AHeroCharacter::Disarm()
 
 void AHeroCharacter::EquipWeapon()
 {
-	if (EquippedWeapon) EquippedWeapon->AttachMeshSocket(GetMesh(), FName("RightHandSocket"));
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->AttachMeshSocket(GetMesh(), FName("RightHandSocket"));
+		//SetWeaponCollisionEnabled(ECollisionEnabled::NoCollision);
+	} 
+	
 }
 
 bool AHeroCharacter::CanEquip()
