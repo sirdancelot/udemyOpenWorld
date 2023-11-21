@@ -40,18 +40,22 @@ protected:
 	void Move(const FInputActionValue& Value);
 	void LookAround(const FInputActionValue& Value);
 	void EKeyPressed(const FInputActionValue& Value);
-	void Attack(const FInputActionValue& Value);
+    void SetCharacterStateByWeaponType();
+    FName GetWeaponSocket(AWeapon *OverlappingWeapon);
+    FName GetWeaponSpineSocket(AWeapon *OverlappingWeapon);
+    void Attack(const FInputActionValue &Value);
 
-	bool CanEquip();
-	bool CanUnequip();
-	
-	UFUNCTION(BlueprintCallable)	
+    bool CanEquip();
+    bool CanUnequip();
+
+    // gets called in abp_hero via notify in animation.
+    UFUNCTION(BlueprintCallable)	
 	void Disarm();
 
 	UFUNCTION(BlueprintCallable)	
 	void EquipWeapon();
 
-	/**
+    /**
 	 * Animation Montages
 	*/
 	void PlayAttackMontage();
@@ -102,7 +106,10 @@ private:
 
 	/** Animation Montages */
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
-	UAnimMontage* AttackMontage;
+	UAnimMontage* AttackMontage1H;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Montages")
+	UAnimMontage* AttackMontage2H;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
 	UAnimMontage* EActionMontage;
@@ -111,6 +118,10 @@ private:
 	
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Weapon")
 	AWeapon* EquippedWeapon;
+
+	UAnimMontage* GetAttackAnimationByWeaponType();
+
+    void AttachWeaponToSocket(FName Socket);
 
 public:	
 	FORCEINLINE void SetOverlappingItem(AItem* Item) { OverlappingItem = Item; }

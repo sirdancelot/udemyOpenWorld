@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "WeaponTypes.h"
 #include "Rashepur/Item.h"
 #include "Weapon.generated.h"
 
@@ -12,6 +13,7 @@
 class USoundBase;
 class UBoxComponent;
 class USceneComponent;
+
 
 UCLASS()
 class RASHEPUR_API AWeapon : public AItem
@@ -47,6 +49,9 @@ private:
     UPROPERTY(EditAnywhere, Category = "Weapon Properties")
     float Damage = 20;
 
+    UPROPERTY(EditDefaultsOnly, Category = "Weapon Properties")
+    EWeaponType WeaponType = EWeaponType::EWT_OneHand;
+
     UPROPERTY(VisibleAnywhere)
     UBoxComponent* WeaponBox;
 
@@ -56,9 +61,8 @@ private:
     UPROPERTY(VisibleAnywhere)
     USceneComponent* BoxTraceEnd;
 
+    bool IsEquipped = false;
  
-
-
 public:
     UFUNCTION(BlueprintPure)
 	FORCEINLINE USoundBase* GetEquipWeaponSound() const { return EquipSound; }
@@ -67,4 +71,5 @@ public:
 	FORCEINLINE USoundBase* GetUnequipWeaponSound() const { return UnequipSound; }
 
     FORCEINLINE UBoxComponent* GetWeaponBox() const { return WeaponBox; }
+    FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; }
 };

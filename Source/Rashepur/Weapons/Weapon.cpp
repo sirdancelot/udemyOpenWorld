@@ -41,6 +41,7 @@ void AWeapon::Equip(USceneComponent* InParent, FName InSocketName, AActor* NewOw
     {
         EmbersEffect->Deactivate();
     }
+    IsEquipped = true;
 }
 
 void AWeapon::PlayEquipSound()
@@ -105,8 +106,9 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent *OverlappedComponent, AActor *Oth
                                         BoxHit,
                                         true
     );
-    if (BoxHit.GetActor()) // vai ser nulo se n�o acertar nada
-    {
+    if (BoxHit.GetActor() && IsEquipped) // vai ser nulo se nao acertar nada
+    {        
+        UGameplayStatics::ApplyDamage(BoxHit.GetActor(), Damage, GetInstigator()->GetController(), this, UDamageType::StaticClass());
         IHitInterface* HitInterface = Cast<IHitInterface>(BoxHit.GetActor()); // se o ator implementa a interface de objetos "hitaveis" retorna algo, senao null
         if (HitInterface)
         {
@@ -114,7 +116,6 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent *OverlappedComponent, AActor *Oth
         }
         IgnoreActors.AddUnique(BoxHit.GetActor());
         CreateFields(BoxHit.ImpactPoint);
-        UGameplayStatics::ApplyDamage(BoxHit.GetActor(), Damage, GetInstigator()->GetController(), this, UDamageType::StaticClass()
-        );
+        
     }
 }

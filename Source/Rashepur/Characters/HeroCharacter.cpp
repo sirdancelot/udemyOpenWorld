@@ -2,6 +2,7 @@
 
 
 #include "HeroCharacter.h"
+#include "Rashepur/Weapons/WeaponTypes.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -99,26 +100,89 @@ void AHeroCharacter::EKeyPressed(const FInputActionValue &Value)
 	AWeapon* OverlappingWeapon = Cast<AWeapon>(OverlappingItem);
 	if (OverlappingWeapon)
 	{
-		OverlappingWeapon->Equip(GetMesh(), FName("RightHandSocket"), this, this);
-		CharacterState = ECharacterState::ECS_EquippedOneHandedWeapon;
+		// se ja possuir uma arma, destruir a arma atual primeiro
+		if (EquippedWeapon)
+		{
+			EquippedWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+			
+			EquippedWeapon=nullptr;
+		}
+        FName WeaponSocket = GetWeaponSocket(OverlappingWeapon);
+		OverlappingWeapon->Equip(GetMesh(), WeaponSocket, this, this);
 		OverlappingItem = nullptr; // reseta o ponteiro para o item que foi pego
 		EquippedWeapon = OverlappingWeapon;
+		SetCharacterStateByWeaponType();
+		
 	}
 	else
 	{
 		if (CanUnequip()) 
 		{ 
-			CharacterState = ECharacterState::ECS_Unequipped;
 			PlayEActionMontage("Unequip");
-			ActionState = EActionState::EAS_PerformingAction;
+			CharacterState = ECharacterState::ECS_Unequipped;
+			
 		} 
 		else if (CanEquip()) 
 		{
-			CharacterState = ECharacterState::ECS_EquippedOneHandedWeapon;
 			PlayEActionMontage("Equip");
-			ActionState = EActionState::EAS_PerformingAction;
+			SetCharacterStateByWeaponType();
 		}
 	}
+}
+void AHeroCharacter::SetCharacterStateByWeaponType()
+{
+	if (EquippedWeapon)
+	{
+		switch (EquippedWeapon->GetWeaponType())
+		{
+			case EWeaponType::EWT_OneHand:
+				CharacterState = ECharacterState::ECS_EquippedOneHandedWeapon;
+				break;
+			case EWeaponType::EWT_TwoHand:
+				CharacterState = ECharacterState::ECS_EquippedTwoHandedWeapon;
+				break;
+			case EWeaponType::EWT_Throw:
+				CharacterState = ECharacterState::ECS_EquippedThrowingWeapon;
+				break;			
+		}
+	}
+	else 
+	{
+		CharacterState = ECharacterState::ECS_Unequipped;
+	}
+
+}
+
+FName AHeroCharacter::GetWeaponSocket(AWeapon *OverlappingWeapon)
+{
+	FName WeaponSocket = FName("OneHandedSocket");
+    EWeaponType WeaponType = OverlappingWeapon->GetWeaponType();
+    switch (WeaponType)
+    {
+		case EWeaponType::EWT_TwoHand:
+			WeaponSocket = FName("TwoHandedSocket");
+			break;
+		case EWeaponType::EWT_Throw:
+			CharacterState = ECharacterState::ECS_EquippedThrowingWeapon;
+			break;
+    }
+	return WeaponSocket;
+}
+
+FName AHeroCharacter::GetWeaponSpineSocket(AWeapon *OverlappingWeapon)
+{
+	FName WeaponSpineSocket = FName("SpineSocket");
+    EWeaponType WeaponType = OverlappingWeapon->GetWeaponType();
+    switch (WeaponType)
+    {
+		case EWeaponType::EWT_TwoHand:
+			WeaponSpineSocket = FName("TwoHandedSpineSocket");
+			UE_LOG(LogTemp, Warning, TEXT("Equip 2 hand"));
+			break;
+		case EWeaponType::EWT_Throw:
+			break;
+    }
+	return WeaponSpineSocket;
 }
 
 void AHeroCharacter::Attack(const FInputActionValue &Value)
@@ -129,55 +193,52 @@ void AHeroCharacter::Attack(const FInputActionValue &Value)
 	}
 }
 
+// chamados a partir do blueprint pra tirar da mão ou colocar na mão a arma do personagem
+void AHeroCharacter::Disarm()
+{
+	AttachWeaponToSocket(GetWeaponSpineSocket(EquippedWeapon));
+}
+
+// chamados a partir do blueprint pra tirar da mão ou colocar na mão a arma do personagem
+void AHeroCharacter::EquipWeapon()
+{
+	AttachWeaponToSocket(GetWeaponSocket(EquippedWeapon));
+}
+
+void AHeroCharacter::AttachWeaponToSocket(FName Socket)
+{
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->AttachMeshSocket(GetMesh(), Socket);
+	} 
+}
+
+bool AHeroCharacter::CanEquip()
+{
+    return ActionState == EActionState::EAS_Unoccupied 
+			&& EquippedWeapon;
+}
+
 bool AHeroCharacter::CanUnequip()
 {
     return ActionState == EActionState::EAS_Unoccupied 
 			&& CharacterState != ECharacterState::ECS_Unequipped;
 }
 
-void AHeroCharacter::Disarm()
-{
-	if (EquippedWeapon) EquippedWeapon->AttachMeshSocket(GetMesh(), FName("SpineSocket"));
-}
-
-void AHeroCharacter::EquipWeapon()
-{
-	if (EquippedWeapon)
-	{
-		EquippedWeapon->AttachMeshSocket(GetMesh(), FName("RightHandSocket"));
-		//SetWeaponCollisionEnabled(ECollisionEnabled::NoCollision);
-	} 
-	
-}
-
-bool AHeroCharacter::CanEquip()
-{
-    return ActionState == EActionState::EAS_Unoccupied 
-			&& CharacterState == ECharacterState::ECS_Unequipped 
-			&& EquippedWeapon;
-}
 
 void AHeroCharacter::PlayAttackMontage()
 {
 	ActionState = EActionState::EAS_Occupied;
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && AttackMontage)
+	if (AnimInstance && AttackMontage1H)
 	{
-		AnimInstance->Montage_Play(AttackMontage, AttackAnimationSpeed);
-		int32 Selection = FMath::RandRange(0,1);
-		FName SectionName = FName();
-		switch (Selection)
-		{
-			case 0:
-				SectionName = FName ("Attack1");
-				break;
-			case 1:
-				SectionName = FName ("Attack2");
-				break;
-			default:
-				break;
-		}
-		AnimInstance->Montage_JumpToSection(SectionName, AttackMontage);
+		UAnimMontage* EquippedWeaponMontage = GetAttackAnimationByWeaponType();
+		AnimInstance->Montage_Play(EquippedWeaponMontage, AttackAnimationSpeed);
+		
+		int32 Selection = FMath::RandRange(1,EquippedWeaponMontage->GetNumSections());
+		FName SectionName = FName(FString("Attack"+FString::FromInt(Selection)));
+
+		AnimInstance->Montage_JumpToSection(SectionName, EquippedWeaponMontage);
 		AnimInstance->Montage_SetEndDelegate(EndMontageDelegate);
 	}
 }
@@ -196,6 +257,18 @@ void AHeroCharacter::PlayEActionMontage(const FName& SectionName)
 void AHeroCharacter::OnActionEnded(UAnimMontage *Montage, bool bInterrupted)
 {
 	ActionState = EActionState::EAS_Unoccupied;
+}
+
+UAnimMontage *AHeroCharacter::GetAttackAnimationByWeaponType()
+{
+	if (EquippedWeapon)
+	{
+		if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_OneHand)
+			return AttackMontage1H;
+		else if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_TwoHand)
+			return AttackMontage2H;
+	}
+    return nullptr;
 }
 
 // Called to bind functionality to input

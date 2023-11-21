@@ -9,6 +9,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "Components/AttributeComponent.h"
 #include "HUD/HealthBarComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
+
+
 
 AEnemy::AEnemy()
 {
@@ -24,12 +27,29 @@ AEnemy::AEnemy()
 
 	HealthBarWidget = CreateDefaultSubobject<UHealthBarComponent>(TEXT("HealthBarDisplay"));
 	HealthBarWidget->SetupAttachment(GetRootComponent());
+
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationRoll = false;
 }
 
 void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
+	if (HealthBarWidget)
+	{
+		HealthBarWidget->SetHealthPercent(CharAttributes->GetHealthPercent());
+		HealthBarWidget->SetVisibility(false);
+	}
+}
 
+void AEnemy::Die()
+{
+	SelectDeathMontage();
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HealthBarWidget->SetVisibility(false);
+	SetLifeSpan(10.0f);
 }
 
 void AEnemy::PlayHitReactMontage(const FName& SectionName)
@@ -42,9 +62,45 @@ void AEnemy::PlayHitReactMontage(const FName& SectionName)
 	}
 }
 
+void AEnemy::SelectDeathMontage()
+{
+	if (DeathMontage)
+	{
+		int32 Selection = FMath::RandRange(0,3);
+		FName SectionName = FName();
+		switch (Selection)
+		{
+			case 0:
+				DeathPose = EDeathPose::EDP_Death1;
+				break;
+			case 1:
+				DeathPose = EDeathPose::EDP_Death2;
+				break;
+			case 2:
+				DeathPose = EDeathPose::EDP_Death3;
+				break;
+			case 3:
+				DeathPose = EDeathPose::EDP_Death4;
+				break;
+			default:
+				break;
+		}
+	}
+}
+
 void AEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	if (CombatTarget)
+	{
+		double DistanceToTarget = (CombatTarget->GetActorLocation() - GetActorLocation()).Size();
+		if (DistanceToTarget > CombatRadius)
+		{
+			CombatTarget = nullptr;
+			if (HealthBarWidget)
+				HealthBarWidget->SetVisibility(false);
+		}
+	}
 
 }
 
@@ -57,16 +113,17 @@ void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 void AEnemy::GetHit_Implementation(const FVector& ImpactPoint)
 {
 	//DRAW_SPHERE_COLOR(ImpactPoint, FColor::Blue);
-	DirectionalHitReact(ImpactPoint);
-	if (HitSound)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, HitSound, ImpactPoint);
-	}
-	if (HitParticles)
-	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticles, ImpactPoint);
-	}
+	if (HealthBarWidget)
+		HealthBarWidget->SetVisibility(true);
+	if (CharAttributes && CharAttributes->isAlive())
+		DirectionalHitReact(ImpactPoint);
+	else 
+		Die();
 
+	if (HitSound)
+		UGameplayStatics::PlaySoundAtLocation(this, HitSound, ImpactPoint);
+	if (HitParticles)
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticles, ImpactPoint);
 }
 
 void AEnemy::DirectionalHitReact(const FVector& ImpactPoint)
@@ -111,5 +168,6 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const &DamageEvent, AC
 		CharAttributes->ReceiveDamage(DamageAmount);
 		HealthBarWidget->SetHealthPercent(CharAttributes->GetHealthPercent());
 	}
+	CombatTarget = EventInstigator->GetPawn();
     return DamageAmount;
 }

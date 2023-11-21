@@ -28,6 +28,10 @@ float UAttributeComponent::GetHealthPercent()
     return Health / MaxHealth;
 }
 
+bool UAttributeComponent::isAlive()
+{
+    return Health > 0;
+}
 
 void UAttributeComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
