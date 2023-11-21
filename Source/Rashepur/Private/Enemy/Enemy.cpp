@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Rashepur/Public/Enemy/Enemy.h"
+#include "Enemy/Enemy.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Rashepur/DebugMacros.h"
@@ -20,7 +20,7 @@ AEnemy::AEnemy()
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 
 	// componente dos atributos
-	EnemyAttributes = CreateDefaultSubobject<UAttributeComponent>(TEXT("EnemyAttributes"));
+	CharAttributes = CreateDefaultSubobject<UAttributeComponent>(TEXT("CharAttributes"));
 
 	HealthBarWidget = CreateDefaultSubobject<UHealthBarComponent>(TEXT("HealthBarDisplay"));
 	HealthBarWidget->SetupAttachment(GetRootComponent());
@@ -29,11 +29,7 @@ AEnemy::AEnemy()
 void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
-	if (HealthBarWidget)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Mudando a vida"));
-		HealthBarWidget->SetHealthPercent(1.f);
-	}	
+
 }
 
 void AEnemy::PlayHitReactMontage(const FName& SectionName)
@@ -108,5 +104,12 @@ void AEnemy::DirectionalHitReact(const FVector& ImpactPoint)
 
 }
 
-
-
+float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const &DamageEvent, AController *EventInstigator, AActor *DamageCauser)
+{
+	if (CharAttributes && HealthBarWidget)
+	{
+		CharAttributes->ReceiveDamage(DamageAmount);
+		HealthBarWidget->SetHealthPercent(CharAttributes->GetHealthPercent());
+	}
+    return DamageAmount;
+}

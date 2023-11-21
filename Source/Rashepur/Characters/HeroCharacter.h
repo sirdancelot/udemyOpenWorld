@@ -23,18 +23,15 @@ class RASHEPUR_API AHeroCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
+
 	AHeroCharacter();
-	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	UFUNCTION(BlueprintCallable)
     void SetWeaponCollisionEnabled(ECollisionEnabled::Type CollisionEnabled);
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
 
-	// Called every frame
+protected:
+	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
 	/** 
@@ -44,7 +41,7 @@ protected:
 	void LookAround(const FInputActionValue& Value);
 	void EKeyPressed(const FInputActionValue& Value);
 	void Attack(const FInputActionValue& Value);
-	void PlayEActionMontage(const FName& SectionName);
+
 	bool CanEquip();
 	bool CanUnequip();
 	
@@ -58,10 +55,10 @@ protected:
 	 * Animation Montages
 	*/
 	void PlayAttackMontage();
+	void PlayEActionMontage(const FName& SectionName);
 	void OnActionEnded(UAnimMontage* Montage, bool bInterrupted);
 	
 private: 
-
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputMappingContext* HeroMappingContext;
 

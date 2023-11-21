@@ -26,8 +26,10 @@ AWeapon::AWeapon()
     BoxTraceEnd->SetupAttachment(WeaponBox);
 }
 
-void AWeapon::Equip(USceneComponent* InParent, FName InSocketName)
+void AWeapon::Equip(USceneComponent* InParent, FName InSocketName, AActor* NewOwner, APawn* NewInstigator)
 {
+    SetOwner(NewOwner);
+    SetInstigator(NewInstigator);
     AttachMeshSocket(InParent, InSocketName);
     ItemState = EItemState::EIS_Equipped;
     PlayEquipSound();
@@ -112,5 +114,7 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent *OverlappedComponent, AActor *Oth
         }
         IgnoreActors.AddUnique(BoxHit.GetActor());
         CreateFields(BoxHit.ImpactPoint);
+        UGameplayStatics::ApplyDamage(BoxHit.GetActor(), Damage, GetInstigator()->GetController(), this, UDamageType::StaticClass()
+        );
     }
 }

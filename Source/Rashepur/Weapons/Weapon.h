@@ -20,7 +20,7 @@ class RASHEPUR_API AWeapon : public AItem
 	
 public:
     AWeapon();
-	void Equip(USceneComponent* InParent, FName InSocketName);
+	void Equip(USceneComponent* InParent, FName InSocketName, AActor* NewOwner, APawn* NewInstigator);
     void PlayEquipSound();
     void AttachMeshSocket(USceneComponent *InParent, const FName &InSocketName);
     virtual void Tick(float DeltaTime) override;
@@ -43,6 +43,9 @@ private:
 
     UPROPERTY(EditAnywhere, Category = "Weapon Properties")
     USoundBase* UnequipSound;
+    
+    UPROPERTY(EditAnywhere, Category = "Weapon Properties")
+    float Damage = 20;
 
     UPROPERTY(VisibleAnywhere)
     UBoxComponent* WeaponBox;
@@ -53,6 +56,7 @@ private:
     UPROPERTY(VisibleAnywhere)
     USceneComponent* BoxTraceEnd;
 
+ 
 
 
 public:

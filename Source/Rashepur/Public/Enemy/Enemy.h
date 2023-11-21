@@ -24,17 +24,17 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetHit_Implementation(const FVector& ImpactPoint) override;
 	void DirectionalHitReact(const FVector& ImpactPoint);
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
 protected:
 	virtual void BeginPlay() override;
-	
 
 private:
-	UPROPERTY(VisibleAnywhere)
-	UAttributeComponent* EnemyAttributes;
+	UPROPERTY(EditAnywhere)
+	UAttributeComponent* CharAttributes;
 
-	/** Animation Montages */
-	UPROPERTY(EditDefaultsOnly, Category = "Montages")
-	UAnimMontage* HitReactMontage;
+	UPROPERTY(VisibleAnywhere)
+	UHealthBarComponent* HealthBarWidget;
 
 	UPROPERTY(EditAnywhere, Category = "Sounds")
 	USoundBase* HitSound;
@@ -42,11 +42,12 @@ private:
 	UPROPERTY(EditAnywhere, Category = "VFX")
 	UParticleSystem* HitParticles;
 
-	UPROPERTY(VisibleAnywhere)
-	UHealthBarComponent* HealthBarWidget;
 	/**
 	 * Animation Montages
 	*/
 	void PlayHitReactMontage(const FName& SectionName);
+
+	UPROPERTY(EditDefaultsOnly, Category = "Montages")
+	UAnimMontage* HitReactMontage;
 
 };
