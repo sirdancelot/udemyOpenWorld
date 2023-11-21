@@ -7,6 +7,8 @@
 #include "Rashepur/DebugMacros.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/AttributeComponent.h"
+#include "HUD/HealthBarComponent.h"
 
 AEnemy::AEnemy()
 {
@@ -17,12 +19,21 @@ AEnemy::AEnemy()
 	GetMesh()->SetGenerateOverlapEvents(true);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 
+	// componente dos atributos
+	EnemyAttributes = CreateDefaultSubobject<UAttributeComponent>(TEXT("EnemyAttributes"));
+
+	HealthBarWidget = CreateDefaultSubobject<UHealthBarComponent>(TEXT("HealthBarDisplay"));
+	HealthBarWidget->SetupAttachment(GetRootComponent());
 }
 
 void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	if (HealthBarWidget)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Mudando a vida"));
+		HealthBarWidget->SetHealthPercent(1.f);
+	}	
 }
 
 void AEnemy::PlayHitReactMontage(const FName& SectionName)
@@ -94,15 +105,7 @@ void AEnemy::DirectionalHitReact(const FVector& ImpactPoint)
 	else if (Theta >= 45.f && Theta < 135.f)
 		Section = FName("FromRight");
 	PlayHitReactMontage(Section);
-	/*
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Green, FString::Printf(TEXT("Theta: %f"), Theta));
-	}
-	UKismetSystemLibrary::DrawDebugArrow(this, GetActorLocation(), GetActorLocation() + Forward * 60.f, 5.f, FColor::Red, 5.f);
-	UKismetSystemLibrary::DrawDebugArrow(this, GetActorLocation(), GetActorLocation() + ToHit * 60.f, 5.f, FColor::Green, 5.f);
-	UKismetSystemLibrary::DrawDebugArrow(this, GetActorLocation(), GetActorLocation() + CrossProduct * 100.f, 5.f, FColor::Blue, 5.f);
-	*/
+
 }
 
 

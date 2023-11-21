@@ -10,7 +10,8 @@
 class UAnimMontage;
 class USoundBase;
 class UParticleSystem;
-
+class UAttributeComponent;
+class UHealthBarComponent;
 
 UCLASS()
 class RASHEPUR_API AEnemy : public ACharacter, public IHitInterface
@@ -25,7 +26,12 @@ public:
 	void DirectionalHitReact(const FVector& ImpactPoint);
 protected:
 	virtual void BeginPlay() override;
+	
+
 private:
+	UPROPERTY(VisibleAnywhere)
+	UAttributeComponent* EnemyAttributes;
+
 	/** Animation Montages */
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
 	UAnimMontage* HitReactMontage;
@@ -36,7 +42,8 @@ private:
 	UPROPERTY(EditAnywhere, Category = "VFX")
 	UParticleSystem* HitParticles;
 
-
+	UPROPERTY(VisibleAnywhere)
+	UHealthBarComponent* HealthBarWidget;
 	/**
 	 * Animation Montages
 	*/

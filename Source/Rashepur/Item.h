@@ -7,6 +7,7 @@
 #include "Item.generated.h"
 
 class USphereComponent;
+class UNiagaraComponent;
 
 enum class EItemState : uint8
 {
@@ -60,6 +61,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere)
 	USphereComponent* Sphere;
+
+	UPROPERTY(EditAnywhere)
+	UNiagaraComponent* EmbersEffect;
 
 };
 
