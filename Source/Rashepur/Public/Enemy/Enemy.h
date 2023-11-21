@@ -30,7 +30,7 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditDefaultsOnly)
 	UAttributeComponent* CharAttributes;
 
 	UPROPERTY(VisibleAnywhere)
