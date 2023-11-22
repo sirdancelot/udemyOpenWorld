@@ -32,7 +32,10 @@ public:
 	
 protected:
 	virtual void BeginPlay() override;
-	void Die();
+    void MoveTo(AActor *Target, bool DrawDebugSpheresOnPath = false);
+	AActor* ChoosePatrolTarget();
+    void Die();
+    bool InTargetRange(AActor* Target, double Radius);
 
 private:
 	UPROPERTY(EditDefaultsOnly)
@@ -47,15 +50,35 @@ private:
 	UPROPERTY(EditAnywhere, Category = "VFX")
 	UParticleSystem* HitParticles;
 
+	/**
+	 * Navigation
+	 */
+	
+	UPROPERTY()
+	class AAIController* EnemyController;
+
 	UPROPERTY()
 	AActor* CombatTarget;
 
 	UPROPERTY(EditAnywhere)
 	double CombatRadius = 500.f;
 
+	// current patrol target
+	UPROPERTY(EditInstanceOnly, Category = "AI Navigation")
+	AActor* PatrolTarget;
+
+	UPROPERTY(EditInstanceOnly, Category = "AI Navigation")
+	TArray<AActor*> PatrolTargets;
+
+	UPROPERTY(EditAnywhere)
+	double PatrolRadius = 200.f;
+
+	FTimerHandle PatrolTimer;
+	void PatrolTimerFinished();
+
 	/**
 	 * Animation Montages
-	*/
+	 */
 	void PlayHitReactMontage(const FName& SectionName);
 	void SelectDeathMontage();
 

@@ -10,8 +10,8 @@
 #include "Components/AttributeComponent.h"
 #include "HUD/HealthBarComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-
-
+#include "AIController.h"
+#include "Navigation/PathFollowingComponent.h"
 
 AEnemy::AEnemy()
 {
@@ -42,6 +42,48 @@ void AEnemy::BeginPlay()
 		HealthBarWidget->SetHealthPercent(CharAttributes->GetHealthPercent());
 		HealthBarWidget->SetVisibility(false);
 	}
+	
+	MoveTo(PatrolTarget);
+
+}
+
+void AEnemy::MoveTo(AActor* Target, bool DrawDebugSpheresOnPath)
+{
+	EnemyController = Cast<AAIController>(GetController());
+	if (EnemyController && Target) 
+	{ 
+		FAIMoveRequest MoveRequest;
+		MoveRequest.SetGoalActor(Target);
+		MoveRequest.SetAcceptanceRadius(15.f);
+		FNavPathSharedPtr NavPath;
+		EnemyController->MoveTo(MoveRequest, &NavPath); // navpath outparameter, a gente passa o parametro e a funcao muda o valor dele
+
+		if (DrawDebugSpheresOnPath)
+		{
+			TArray<FNavPathPoint> PathPoints = NavPath->GetPathPoints();
+			for (auto& Point : PathPoints)
+			{
+				const FVector& Location = Point.Location;
+				DrawDebugSphere(GetWorld(), Location, 12.f, 12, FColor::Green, false, 10.f);
+			}
+		}
+	}
+}
+
+AActor* AEnemy::ChoosePatrolTarget()
+{
+	// remove do array de patroltargets o atual pra nao repetir
+	TArray<AActor*> ValidTargets;
+	for (AActor* Target : PatrolTargets)
+		if (Target != PatrolTarget)
+			ValidTargets.AddUnique(Target);
+
+	if (ValidTargets.Num() > 0)
+	{
+		const int32 NextPatrolTarget = FMath::RandRange(0,ValidTargets.Num()-1);
+		return ValidTargets[NextPatrolTarget];
+	}
+    return nullptr;
 }
 
 void AEnemy::Die()
@@ -50,6 +92,20 @@ void AEnemy::Die()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HealthBarWidget->SetVisibility(false);
 	SetLifeSpan(10.0f);
+}
+
+bool AEnemy::InTargetRange(AActor *Target, double Radius)
+{
+	if (Target == nullptr) return false;
+	double DistanceToTarget = (Target->GetActorLocation() - GetActorLocation()).Size();
+	DRAW_SPHERE_SingleFrame(GetActorLocation());
+	DRAW_SPHERE_SingleFrame(Target->GetActorLocation());
+    return DistanceToTarget <= Radius;
+}
+
+void AEnemy::PatrolTimerFinished()
+{
+	MoveTo(PatrolTarget);
 }
 
 void AEnemy::PlayHitReactMontage(const FName& SectionName)
@@ -91,17 +147,19 @@ void AEnemy::SelectDeathMontage()
 void AEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (CombatTarget)
+	if (!InTargetRange(CombatTarget, CombatRadius))
 	{
-		double DistanceToTarget = (CombatTarget->GetActorLocation() - GetActorLocation()).Size();
-		if (DistanceToTarget > CombatRadius)
-		{
-			CombatTarget = nullptr;
-			if (HealthBarWidget)
-				HealthBarWidget->SetVisibility(false);
-		}
+		CombatTarget = nullptr;
+		if (HealthBarWidget)
+			HealthBarWidget->SetVisibility(false);
 	}
-
+	// isso aqui vai ser executado a cada frame, ou seja, sempre que chegar no alvo, vai resetar o array de alvos validos
+	if (InTargetRange(PatrolTarget, PatrolRadius)) // chegou no proximo alvo
+	{
+		PatrolTarget = ChoosePatrolTarget();
+		// vai executar a funcao depois de 5 segundos
+		GetWorldTimerManager().SetTimer(PatrolTimer, this, &AEnemy::PatrolTimerFinished, 5.f);
+	}	
 }
 
 void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
