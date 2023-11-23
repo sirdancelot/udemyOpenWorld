@@ -58,8 +58,9 @@ void AHeroCharacter::BeginPlay()
 			// o jogador tem subsistemas. pega o subsistema do enhancedinput e adiciona o contexto a ele
 			Subsystem->AddMappingContext(HeroMappingContext, 0);
 		}
-		
 	}
+	// marca o heroi pra ser reconhecido pelo monstro
+	Tags.Add(FName("Hero")); 
 }
 
 // Called every frame
@@ -156,6 +157,7 @@ void AHeroCharacter::SetCharacterStateByWeaponType()
 FName AHeroCharacter::GetWeaponSocket(AWeapon *OverlappingWeapon)
 {
 	FName WeaponSocket = FName("OneHandedSocket");
+	
     EWeaponType WeaponType = OverlappingWeapon->GetWeaponType();
     switch (WeaponType)
     {
@@ -166,12 +168,14 @@ FName AHeroCharacter::GetWeaponSocket(AWeapon *OverlappingWeapon)
 			CharacterState = ECharacterState::ECS_EquippedThrowingWeapon;
 			break;
     }
+	
 	return WeaponSocket;
 }
 
 FName AHeroCharacter::GetWeaponSpineSocket(AWeapon *OverlappingWeapon)
 {
 	FName WeaponSpineSocket = FName("SpineSocket");
+	/*
     EWeaponType WeaponType = OverlappingWeapon->GetWeaponType();
     switch (WeaponType)
     {
@@ -182,6 +186,7 @@ FName AHeroCharacter::GetWeaponSpineSocket(AWeapon *OverlappingWeapon)
 		case EWeaponType::EWT_Throw:
 			break;
     }
+	*/
 	return WeaponSpineSocket;
 }
 

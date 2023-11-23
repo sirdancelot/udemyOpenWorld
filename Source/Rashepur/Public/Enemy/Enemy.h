@@ -13,6 +13,7 @@ class USoundBase;
 class UParticleSystem;
 class UAttributeComponent;
 class UHealthBarComponent;
+class UPawnSensingComponent;
 
 UCLASS()
 class RASHEPUR_API AEnemy : public ACharacter, public IHitInterface
@@ -21,6 +22,8 @@ class RASHEPUR_API AEnemy : public ACharacter, public IHitInterface
 
 public:
 	AEnemy();
+	void CheckCombatTarget();
+	void CheckPatrolTarget();
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetHit_Implementation(const FVector& ImpactPoint) override;
@@ -36,13 +39,26 @@ protected:
 	AActor* ChoosePatrolTarget();
     void Die();
     bool InTargetRange(AActor* Target, double Radius);
-
+	
+	UFUNCTION() // se for ser usado como delegate precisa de ufunction
+	void PawnSeen(APawn* SeenPawn);
 private:
+
+	/* 
+	* Components
+	*/
 	UPROPERTY(EditDefaultsOnly)
 	UAttributeComponent* CharAttributes;
 
 	UPROPERTY(VisibleAnywhere)
 	UHealthBarComponent* HealthBarWidget;
+
+	UPROPERTY(VisibleAnywhere)
+	UPawnSensingComponent* PawnSensing;
+
+	/* 
+	* VFX
+	*/
 
 	UPROPERTY(EditAnywhere, Category = "Sounds")
 	USoundBase* HitSound;
@@ -63,8 +79,11 @@ private:
 	UPROPERTY(EditAnywhere)
 	double CombatRadius = 500.f;
 
-	// current patrol target
-	UPROPERTY(EditInstanceOnly, Category = "AI Navigation")
+	UPROPERTY(EditAnywhere)
+	double AttackRadius = 150.f;
+
+
+	UPROPERTY(EditInstanceOnly, Category = "AI Navigation", BlueprintReadWrite, meta=(AllowPrivateAccess))
 	AActor* PatrolTarget;
 
 	UPROPERTY(EditInstanceOnly, Category = "AI Navigation")
@@ -75,6 +94,12 @@ private:
 
 	FTimerHandle PatrolTimer;
 	void PatrolTimerFinished();
+
+	UPROPERTY(EditAnywhere, Category = "AI Navigation")
+	float WaitTimeMin = 5.f;
+
+	UPROPERTY(EditAnywhere, Category = "AI Navigation")
+	float WaitTimeMax = 10.f;
 
 	/**
 	 * Animation Montages
@@ -88,6 +113,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
 	UAnimMontage* DeathMontage;
 
-
+	EEnemyState EnemyState = EEnemyState::EES_Patrolling;
 
 };

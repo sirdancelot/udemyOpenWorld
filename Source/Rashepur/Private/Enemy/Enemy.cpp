@@ -4,30 +4,40 @@
 #include "Enemy/Enemy.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "Rashepur/DebugMacros.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
-#include "Components/AttributeComponent.h"
-#include "HUD/HealthBarComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "AIController.h"
+
+#include "GameFramework/CharacterMovementComponent.h"
+#include "HUD/HealthBarComponent.h"
+#include "Components/AttributeComponent.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "Perception/PawnSensingComponent.h"
+
+#include "Rashepur/DebugMacros.h"
+
 
 AEnemy::AEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	// Class default collision setup
 	GetMesh()->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 	GetMesh()->SetGenerateOverlapEvents(true);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 
-	// componente dos atributos
+	// Class default components setup
 	CharAttributes = CreateDefaultSubobject<UAttributeComponent>(TEXT("CharAttributes"));
 
 	HealthBarWidget = CreateDefaultSubobject<UHealthBarComponent>(TEXT("HealthBarDisplay"));
 	HealthBarWidget->SetupAttachment(GetRootComponent());
 
+	PawnSensing = CreateDefaultSubobject<UPawnSensingComponent>(TEXT("PawnSensing"));
+	PawnSensing->SightRadius = 1800;
+	PawnSensing->SetPeripheralVisionAngle(45.f);
+ 
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
@@ -42,8 +52,12 @@ void AEnemy::BeginPlay()
 		HealthBarWidget->SetHealthPercent(CharAttributes->GetHealthPercent());
 		HealthBarWidget->SetVisibility(false);
 	}
-	
+	GetCharacterMovement()->MaxWalkSpeed = 125.f;
 	MoveTo(PatrolTarget);
+	if (PawnSensing)
+	{
+		PawnSensing->OnSeePawn.AddDynamic(this, &AEnemy::PawnSeen);
+	}
 
 }
 
@@ -88,6 +102,7 @@ AActor* AEnemy::ChoosePatrolTarget()
 
 void AEnemy::Die()
 {
+	GetCharacterMovement()->StopActiveMovement();
 	SelectDeathMontage();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HealthBarWidget->SetVisibility(false);
@@ -98,9 +113,27 @@ bool AEnemy::InTargetRange(AActor *Target, double Radius)
 {
 	if (Target == nullptr) return false;
 	double DistanceToTarget = (Target->GetActorLocation() - GetActorLocation()).Size();
-	DRAW_SPHERE_SingleFrame(GetActorLocation());
-	DRAW_SPHERE_SingleFrame(Target->GetActorLocation());
+	//DRAW_SPHERE_SingleFrame(GetActorLocation());
+	//DRAW_SPHERE_SingleFrame(Target->GetActorLocation());
     return DistanceToTarget <= Radius;
+}
+
+void AEnemy::PawnSeen(APawn* SeenPawn)
+{
+	if (EnemyState == EEnemyState::EES_Chasing) 
+		return;
+	if (SeenPawn->ActorHasTag(FName("Hero")))
+	{
+		GetWorldTimerManager().ClearTimer(PatrolTimer);
+		GetCharacterMovement()->MaxWalkSpeed = 300.f;
+		CombatTarget = SeenPawn;
+		if (EnemyState != EEnemyState::EES_Attacking)
+		{
+			EnemyState = EEnemyState::EES_Chasing;
+			MoveTo(CombatTarget);
+			UE_LOG(LogTemp, Warning, TEXT("Pawn Seen, Chase Player"));
+		}
+	}
 }
 
 void AEnemy::PatrolTimerFinished()
@@ -144,22 +177,57 @@ void AEnemy::SelectDeathMontage()
 	}
 }
 
-void AEnemy::Tick(float DeltaTime)
+void AEnemy::CheckCombatTarget()
 {
-	Super::Tick(DeltaTime);
 	if (!InTargetRange(CombatTarget, CombatRadius))
 	{
+		// outsite combat radius, lose interest
 		CombatTarget = nullptr;
 		if (HealthBarWidget)
 			HealthBarWidget->SetVisibility(false);
+		EnemyState = EEnemyState::EES_Patrolling;
+		GetCharacterMovement()->MaxWalkSpeed = 125.f;
+		MoveTo(PatrolTarget);
+		UE_LOG(LogTemp, Warning, TEXT("Lose Interest"));
 	}
+	else if (!InTargetRange(CombatTarget, AttackRadius) && EnemyState != EEnemyState::EES_Chasing)
+	{
+		// outside attack range, chase character
+		EnemyState = EEnemyState::EES_Chasing;
+		GetCharacterMovement()->MaxWalkSpeed = 300.f;
+		MoveTo(CombatTarget);
+		UE_LOG(LogTemp, Warning, TEXT("Chase Player"));
+	}
+	else if (InTargetRange(CombatTarget, AttackRadius) && EnemyState != EEnemyState::EES_Attacking)
+	{
+		// inside attack range, attack character
+		EnemyState = EEnemyState::EES_Attacking;
+		UE_LOG(LogTemp, Warning, TEXT("Attack"));
+		// todo attack montage
+	}
+}
+
+void AEnemy::CheckPatrolTarget()
+{
 	// isso aqui vai ser executado a cada frame, ou seja, sempre que chegar no alvo, vai resetar o array de alvos validos
 	if (InTargetRange(PatrolTarget, PatrolRadius)) // chegou no proximo alvo
 	{
 		PatrolTarget = ChoosePatrolTarget();
 		// vai executar a funcao depois de 5 segundos
-		GetWorldTimerManager().SetTimer(PatrolTimer, this, &AEnemy::PatrolTimerFinished, 5.f);
-	}	
+		int32 WaitTime = FMath::RandRange(WaitTimeMin, WaitTimeMax);
+		GetWorldTimerManager().SetTimer(PatrolTimer, this, &AEnemy::PatrolTimerFinished, WaitTime);
+	}
+}
+
+void AEnemy::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	if (EnemyState > EEnemyState::EES_Patrolling)
+	{
+		CheckCombatTarget();
+	}
+
+	CheckPatrolTarget();
 }
 
 void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -227,5 +295,8 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const &DamageEvent, AC
 		HealthBarWidget->SetHealthPercent(CharAttributes->GetHealthPercent());
 	}
 	CombatTarget = EventInstigator->GetPawn();
+	EnemyState = EEnemyState::EES_Chasing;
+	GetCharacterMovement()->MaxWalkSpeed = 300.f;
+	MoveTo(CombatTarget);
     return DamageAmount;
 }
