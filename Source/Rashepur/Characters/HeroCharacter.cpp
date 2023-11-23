@@ -175,18 +175,6 @@ FName AHeroCharacter::GetWeaponSocket(AWeapon *OverlappingWeapon)
 FName AHeroCharacter::GetWeaponSpineSocket(AWeapon *OverlappingWeapon)
 {
 	FName WeaponSpineSocket = FName("SpineSocket");
-	/*
-    EWeaponType WeaponType = OverlappingWeapon->GetWeaponType();
-    switch (WeaponType)
-    {
-		case EWeaponType::EWT_TwoHand:
-			WeaponSpineSocket = FName("TwoHandedSpineSocket");
-			UE_LOG(LogTemp, Warning, TEXT("Equip 2 hand"));
-			break;
-		case EWeaponType::EWT_Throw:
-			break;
-    }
-	*/
 	return WeaponSpineSocket;
 }
 
