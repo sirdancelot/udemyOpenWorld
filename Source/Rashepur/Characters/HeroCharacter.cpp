@@ -121,8 +121,7 @@ void AHeroCharacter::EKeyPressed(const FInputActionValue &Value)
 		if (CanUnequip()) 
 		{ 
 			PlayEActionMontage("Unequip");
-			CharacterState = ECharacterState::ECS_Unequipped;
-			
+			CharacterState = ECharacterState::ECS_Unequipped;			
 		} 
 		else if (CanEquip()) 
 		{
@@ -152,21 +151,22 @@ void AHeroCharacter::SetCharacterStateByWeaponType()
 	{
 		CharacterState = ECharacterState::ECS_Unequipped;
 	}
-
 }
 
-FName AHeroCharacter::GetWeaponSocket(AWeapon *OverlappingWeapon)
+FName AHeroCharacter::GetWeaponSocket(AWeapon *Weapon)
 {
 	FName WeaponSocket = FName("OneHandedSocket");
 	
-    EWeaponType WeaponType = OverlappingWeapon->GetWeaponType();
+    EWeaponType WeaponType = Weapon->GetWeaponType();
     switch (WeaponType)
     {
 		case EWeaponType::EWT_TwoHand:
+			CharacterState = ECharacterState::ECS_EquippedTwoHandedWeapon;
 			WeaponSocket = FName("TwoHandedSocket");
 			break;
 		case EWeaponType::EWT_Throw:
 			CharacterState = ECharacterState::ECS_EquippedThrowingWeapon;
+			WeaponSocket = FName("TwoHandedSocket");
 			break;
     }
 	
@@ -175,8 +175,7 @@ FName AHeroCharacter::GetWeaponSocket(AWeapon *OverlappingWeapon)
 
 FName AHeroCharacter::GetWeaponSpineSocket(AWeapon *OverlappingWeapon)
 {
-	FName WeaponSpineSocket = FName("SpineSocket");
-	return WeaponSpineSocket;
+	return FName("SpineSocket");
 }
 
 bool AHeroCharacter::CanAttack()
@@ -187,11 +186,6 @@ bool AHeroCharacter::CanAttack()
 void AHeroCharacter::Attack()
 {
 	Super::Attack();
-	if (CanAttack())
-	{
-		PlayAttackMontage();
-		ActionState = EActionState::EAS_Occupied;
-	}
 }
 
 // chamados a partir do blueprint pra tirar da mão ou colocar na mão a arma do personagem
@@ -226,16 +220,12 @@ bool AHeroCharacter::CanUnequip()
 			&& CharacterState != ECharacterState::ECS_Unequipped;
 }
 
-
 void AHeroCharacter::PlayEActionMontage(const FName& SectionName)
 {
-	ActionState = EActionState::EAS_Occupied;
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && EActionMontage)
+	if (EActionMontage) 
 	{
-		AnimInstance->Montage_Play(EActionMontage, AttackAnimationSpeed);
-		AnimInstance->Montage_JumpToSection(SectionName, EActionMontage);
-		AnimInstance->Montage_SetEndDelegate(EndMontageDelegate);
+		ActionState = EActionState::EAS_Occupied;
+		PlayMontageSection(EActionMontage, SectionName);
 	}
 }
 

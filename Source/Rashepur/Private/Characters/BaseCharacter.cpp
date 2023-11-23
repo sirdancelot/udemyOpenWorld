@@ -4,6 +4,9 @@
 #include "Characters/BaseCharacter.h"
 #include "Components/BoxComponent.h"
 #include "Components/AttributeComponent.h"
+#include "Components/CapsuleComponent.h"
+
+#include "Kismet/GameplayStatics.h"
 
 #include "Rashepur/Weapons/Weapon.h"
 
@@ -25,10 +28,15 @@ void ABaseCharacter::BeginPlay()
 
 void ABaseCharacter::Attack()
 {
+	ActionState = EActionState::EAS_Occupied;
+	PlayAttackMontage();
 }
 
 void ABaseCharacter::Die()
 {
+	DisableCapsule();
+	SelectDeathMontage();
+	SetLifeSpan(DeathLifeSpan);
 }
 
 void ABaseCharacter::PlayHitReactMontage(const FName& SectionName)
@@ -80,40 +88,45 @@ void ABaseCharacter::SelectDeathMontage()
 	if (DeathMontage)
 	{
 		int32 Selection = FMath::RandRange(0, DeathMontage->GetNumSections() - 1);
-		switch (Selection)
-		{
-		case 0:
-			DeathPose = EDeathPose::EDP_Death1;
-			break;
-		case 1:
-			DeathPose = EDeathPose::EDP_Death2;
-			break;
-		case 2:
-			DeathPose = EDeathPose::EDP_Death3;
-			break;
-		case 3:
-			DeathPose = EDeathPose::EDP_Death4;
-			break;
-		default:
-			break;
-		}
+		TEnumAsByte<EDeathPose> Pose(Selection);
+		DeathPose = Pose;
+		UE_LOG(LogTemp, Warning, TEXT("Pose: %d"), Pose);
 	}
+}
+
+void ABaseCharacter::DisableCapsule()
+{
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void ABaseCharacter::PlayMontageSection(UAnimMontage* Montage, const FName& SectionName, float AnimationSpeed)
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && Montage)
+	{
+		AnimInstance->Montage_Play(Montage, AnimationSpeed);
+		AnimInstance->Montage_JumpToSection(SectionName, Montage);
+		AnimInstance->Montage_SetEndDelegate(EndMontageDelegate);
+	}
+}
+
+FName ABaseCharacter::RandomMontageSection(UAnimMontage* Montage, FString MontagePrefix)
+{
+	FName SectionName;
+	if (Montage)
+	{
+		int32 Selection = FMath::RandRange(1, Montage->GetNumSections());
+		SectionName = FName(MontagePrefix + FString::FromInt(Selection));
+	}
+	return SectionName;
 }
 
 void ABaseCharacter::PlayAttackMontage()
 {
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	UAnimMontage* EquippedWeaponMontage = GetAttackMontageByWeaponType();
-
-	if (AnimInstance && EquippedWeaponMontage)
-	{
-		AnimInstance->Montage_Play(EquippedWeaponMontage, AttackAnimationSpeed);
-
-		int32 Selection = FMath::RandRange(1, EquippedWeaponMontage->GetNumSections());
-		FName SectionName = FName(FString("Attack" + FString::FromInt(Selection)));
-
-		AnimInstance->Montage_JumpToSection(SectionName, EquippedWeaponMontage);
-		AnimInstance->Montage_SetEndDelegate(EndMontageDelegate);
+	if (EquippedWeaponMontage)
+	{		
+		PlayMontageSection(EquippedWeaponMontage, RandomMontageSection(EquippedWeaponMontage, FString("Attack")), AttackAnimationSpeed);
 	}
 }
 
@@ -136,11 +149,36 @@ void ABaseCharacter::OnActionEnded(UAnimMontage* Montage, bool bInterrupted)
 
 bool ABaseCharacter::CanAttack()
 {
-	return false;
+	return true;
+}
+
+bool ABaseCharacter::IsAlive()
+{
+	return CharAttributes&& CharAttributes->isAlive();
 }
 
 void ABaseCharacter::AttackEnd()
 {
+}
+
+void ABaseCharacter::PlayHitSound(const FVector& ImpactPoint)
+{
+	if (HitSound)
+		UGameplayStatics::PlaySoundAtLocation(this, HitSound, ImpactPoint);
+}
+
+void ABaseCharacter::SpawnHitParticles(const FVector& ImpactPoint)
+{
+	if (HitParticles)
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticles, ImpactPoint);
+}
+
+void ABaseCharacter::HandleDamage(float DamageAmount)
+{
+	if (CharAttributes)
+	{
+		CharAttributes->ReceiveDamage(DamageAmount);
+	}
 }
 
 void ABaseCharacter::Tick(float DeltaTime)

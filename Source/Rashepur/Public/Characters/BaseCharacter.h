@@ -39,15 +39,27 @@ protected:
 	void PlayHitReactMontage(const FName& SectionName);
 	void DirectionalHitReact(const FVector& ImpactPoint);
 	void SelectDeathMontage();
+	void DisableCapsule();
+
+	void PlayMontageSection(UAnimMontage* Montage, const FName& SectionName, float AnimationSpeed = 1.0f);
+	FName RandomMontageSection(UAnimMontage* Montage, FString MontagePrefix);
 
 	virtual bool CanAttack();
+	bool IsAlive();
 	UFUNCTION(BlueprintCallable)
 	virtual void AttackEnd();
 
-	UPROPERTY(BlueprintReadWrite)
-	EActionState ActionState = EActionState::EAS_Unoccupied;
+	void PlayHitSound(const FVector& ImpactPoint);
+	void SpawnHitParticles(const FVector& ImpactPoint);
+	virtual void HandleDamage(float DamageAmount);
 
 	ECharacterState CharacterState = ECharacterState::ECS_Unequipped;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Combat")
+	float DeathLifeSpan = 10.0f;
+
+	UPROPERTY(BlueprintReadWrite)
+	EActionState ActionState = EActionState::EAS_Unoccupied;
 
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"), Category = "Animation")
 	float AttackAnimationSpeed = 1.0f;
@@ -72,7 +84,7 @@ protected:
 	UAnimMontage* DeathMontage;
 
 	UPROPERTY(BlueprintReadOnly)
-	EDeathPose DeathPose = EDeathPose::EDP_Alive;
+	EDeathPose DeathPose = EDeathPose::EDP_Death1;
 
 	/*
 	* VFX
