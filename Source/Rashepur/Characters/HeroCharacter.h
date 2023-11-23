@@ -4,8 +4,8 @@
 
 #include "CharacterStates.h"
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "Characters/BaseCharacter.h"
 #include "HeroCharacter.generated.h"
 
 class USpringArmComponent;
@@ -18,7 +18,7 @@ class UAnimMontage;
 class AWeapon;
 
 UCLASS()
-class RASHEPUR_API AHeroCharacter : public ACharacter
+class RASHEPUR_API AHeroCharacter : public ABaseCharacter
 {
 	GENERATED_BODY()
 
@@ -27,8 +27,7 @@ public:
 	AHeroCharacter();
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	UFUNCTION(BlueprintCallable)
-    void SetWeaponCollisionEnabled(ECollisionEnabled::Type CollisionEnabled);
+
 
 protected:
 	virtual void BeginPlay() override;
@@ -40,11 +39,18 @@ protected:
 	void Move(const FInputActionValue& Value);
 	void LookAround(const FInputActionValue& Value);
 	void EKeyPressed(const FInputActionValue& Value);
-    void SetCharacterStateByWeaponType();
-    FName GetWeaponSocket(AWeapon *OverlappingWeapon);
-    FName GetWeaponSpineSocket(AWeapon *OverlappingWeapon);
-    void Attack(const FInputActionValue &Value);
 
+	virtual void Attack() override;
+
+	/**
+	 * Weapon Handling
+	*/
+
+	void SetCharacterStateByWeaponType();
+	FName GetWeaponSocket(AWeapon* OverlappingWeapon);
+	FName GetWeaponSpineSocket(AWeapon* OverlappingWeapon);
+
+	virtual bool CanAttack() override;
     bool CanEquip();
     bool CanUnequip();
 
@@ -58,7 +64,6 @@ protected:
     /**
 	 * Animation Montages
 	*/
-	void PlayAttackMontage();
 	void PlayEActionMontage(const FName& SectionName);
 	void OnActionEnded(UAnimMontage* Montage, bool bInterrupted);
 	
@@ -95,31 +100,9 @@ private:
 
 	UPROPERTY(VisibleInstanceOnly)
 	AItem* OverlappingItem;
-
-	ECharacterState CharacterState = ECharacterState::ECS_Unequipped;
-
-	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-	EActionState ActionState = EActionState::EAS_Unoccupied;
-
-	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"), Category = "Animation")
-	float AttackAnimationSpeed = 1.5f;
-
-	/** Animation Montages */
-	UPROPERTY(EditDefaultsOnly, Category = "Montages")
-	UAnimMontage* AttackMontage1H;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Montages")
-	UAnimMontage* AttackMontage2H;
-	
+		
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
 	UAnimMontage* EActionMontage;
-
-	FOnMontageEnded EndMontageDelegate;
-	
-	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Weapon")
-	AWeapon* EquippedWeapon;
-
-	UAnimMontage* GetAttackAnimationByWeaponType();
 
     void AttachWeaponToSocket(FName Socket);
 

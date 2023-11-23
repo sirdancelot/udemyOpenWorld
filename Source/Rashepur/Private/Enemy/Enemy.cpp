@@ -7,10 +7,11 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "AIController.h"
+#include "Components/AttributeComponent.h"
+#include "Rashepur/Weapons/Weapon.h"
 
 #include "GameFramework/CharacterMovementComponent.h"
 #include "HUD/HealthBarComponent.h"
-#include "Components/AttributeComponent.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "Perception/PawnSensingComponent.h"
 
@@ -27,9 +28,6 @@ AEnemy::AEnemy()
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 	GetMesh()->SetGenerateOverlapEvents(true);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
-
-	// Class default components setup
-	CharAttributes = CreateDefaultSubobject<UAttributeComponent>(TEXT("CharAttributes"));
 
 	HealthBarWidget = CreateDefaultSubobject<UHealthBarComponent>(TEXT("HealthBarDisplay"));
 	HealthBarWidget->SetupAttachment(GetRootComponent());
@@ -58,7 +56,23 @@ void AEnemy::BeginPlay()
 	{
 		PawnSensing->OnSeePawn.AddDynamic(this, &AEnemy::PawnSeen);
 	}
+	
+	EquipDefaultWeapon();
+}
 
+void AEnemy::EquipDefaultWeapon()
+{
+	UWorld* World = GetWorld();
+	if (World && DefaultWeaponClass)
+	{
+		AWeapon* DefaultWeapon = World->SpawnActor<AWeapon>(DefaultWeaponClass);
+		DefaultWeapon->Equip(GetMesh(), FName("OneHandedSocket"), this, this);
+		EquippedWeapon = DefaultWeapon;
+		if (DefaultWeapon->GetWeaponType() == EWeaponType::EWT_OneHand)
+			CharacterState = ECharacterState::ECS_EquippedOneHandedWeapon;
+		else if (DefaultWeapon->GetWeaponType() == EWeaponType::EWT_TwoHand)
+			CharacterState = ECharacterState::ECS_EquippedTwoHandedWeapon;
+	}
 }
 
 void AEnemy::MoveTo(AActor* Target, bool DrawDebugSpheresOnPath)
@@ -109,6 +123,17 @@ void AEnemy::Die()
 	SetLifeSpan(10.0f);
 }
 
+void AEnemy::Attack()
+{
+	Super::Attack();
+}
+
+void AEnemy::PlayAttackMontage()
+{
+	Super::PlayAttackMontage();
+
+}
+
 bool AEnemy::InTargetRange(AActor *Target, double Radius)
 {
 	if (Target == nullptr) return false;
@@ -141,41 +166,6 @@ void AEnemy::PatrolTimerFinished()
 	MoveTo(PatrolTarget);
 }
 
-void AEnemy::PlayHitReactMontage(const FName& SectionName)
-{
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && HitReactMontage)
-	{
-		AnimInstance->Montage_Play(HitReactMontage, 1.0f);
-		AnimInstance->Montage_JumpToSection(SectionName, HitReactMontage);
-	}
-}
-
-void AEnemy::SelectDeathMontage()
-{
-	if (DeathMontage)
-	{
-		int32 Selection = FMath::RandRange(0,3);
-		FName SectionName = FName();
-		switch (Selection)
-		{
-			case 0:
-				DeathPose = EDeathPose::EDP_Death1;
-				break;
-			case 1:
-				DeathPose = EDeathPose::EDP_Death2;
-				break;
-			case 2:
-				DeathPose = EDeathPose::EDP_Death3;
-				break;
-			case 3:
-				DeathPose = EDeathPose::EDP_Death4;
-				break;
-			default:
-				break;
-		}
-	}
-}
 
 void AEnemy::CheckCombatTarget()
 {
@@ -252,40 +242,6 @@ void AEnemy::GetHit_Implementation(const FVector& ImpactPoint)
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticles, ImpactPoint);
 }
 
-void AEnemy::DirectionalHitReact(const FVector& ImpactPoint)
-{
-	// calcula onde foi o ponto de impacto no inimigo pra saber qual montagem dar play
-	const FVector Forward = GetActorForwardVector();
-	// abaixa o ponto de impacto para a localizacao z do inimigo 
-	const FVector ImpactLowered(ImpactPoint.X, ImpactPoint.Y, GetActorLocation().Z);
-
-	const FVector ToHit = (ImpactLowered - GetActorLocation()).GetSafeNormal();
-
-	// Forward * ToHit = |Forward||ToHit| * cos(theta)
-	// Forward e ToHit foram normalizados (viraram 1)
-	// logo Forward * ToHit = cos(theta) (theta o angulo entre dois vetores, o vetor da frente do inimigo e do ponto de impacto
-	const double CosTheta = FVector::DotProduct(Forward, ToHit);
-	// acos cossenso ao reverso. (arc cosine) . voce passa o cosseno e recebe o angulo em radians
-	double Theta = FMath::Acos(CosTheta);
-	// converte de radians para graus
-	Theta = FMath::RadiansToDegrees(Theta);
-
-	// se crossproduct apontar para baixo, theta deveria ser negativo
-	const FVector CrossProduct = FVector::CrossProduct(Forward, ToHit);
-	if (CrossProduct.Z < 0)
-	{
-		Theta *= -1.f;
-	}
-	FName Section("FromBack");
-	if (Theta > -45.f && Theta < 45.f)
-		Section = FName("FromFront");
-	else if (Theta >= -135.f && Theta < -45.f)
-		Section = FName("FromLeft");
-	else if (Theta >= 45.f && Theta < 135.f)
-		Section = FName("FromRight");
-	PlayHitReactMontage(Section);
-
-}
 
 float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const &DamageEvent, AController *EventInstigator, AActor *DamageCauser)
 {
@@ -299,4 +255,12 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const &DamageEvent, AC
 	GetCharacterMovement()->MaxWalkSpeed = 300.f;
 	MoveTo(CombatTarget);
     return DamageAmount;
+}
+
+void AEnemy::Destroyed()
+{
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->Destroy();
+	}
 }

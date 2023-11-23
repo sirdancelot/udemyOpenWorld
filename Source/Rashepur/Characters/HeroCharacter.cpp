@@ -42,8 +42,9 @@ AHeroCharacter::AHeroCharacter()
 	EyeBrows->SetupAttachment(GetMesh());
 	EyeBrows->AttachmentName = FString("head");
 
-	//torna o status do personagem para desocupado ao final das montagens
-	EndMontageDelegate.BindUObject(this, &AHeroCharacter::OnActionEnded);
+
+
+	AttackAnimationSpeed = 1.5f;
 }
 
 // Called when the game starts or when spawned
@@ -178,11 +179,18 @@ FName AHeroCharacter::GetWeaponSpineSocket(AWeapon *OverlappingWeapon)
 	return WeaponSpineSocket;
 }
 
-void AHeroCharacter::Attack(const FInputActionValue &Value)
+bool AHeroCharacter::CanAttack()
 {
-	if ((ActionState == EActionState::EAS_Unoccupied) && (CharacterState != ECharacterState::ECS_Unequipped))
+	return (ActionState == EActionState::EAS_Unoccupied) && (CharacterState != ECharacterState::ECS_Unequipped);
+}
+
+void AHeroCharacter::Attack()
+{
+	Super::Attack();
+	if (CanAttack())
 	{
 		PlayAttackMontage();
+		ActionState = EActionState::EAS_Occupied;
 	}
 }
 
@@ -219,22 +227,6 @@ bool AHeroCharacter::CanUnequip()
 }
 
 
-void AHeroCharacter::PlayAttackMontage()
-{
-	ActionState = EActionState::EAS_Occupied;
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && AttackMontage1H)
-	{
-		UAnimMontage* EquippedWeaponMontage = GetAttackAnimationByWeaponType();
-		AnimInstance->Montage_Play(EquippedWeaponMontage, AttackAnimationSpeed);
-		
-		int32 Selection = FMath::RandRange(1,EquippedWeaponMontage->GetNumSections());
-		FName SectionName = FName(FString("Attack"+FString::FromInt(Selection)));
-
-		AnimInstance->Montage_JumpToSection(SectionName, EquippedWeaponMontage);
-		AnimInstance->Montage_SetEndDelegate(EndMontageDelegate);
-	}
-}
 void AHeroCharacter::PlayEActionMontage(const FName& SectionName)
 {
 	ActionState = EActionState::EAS_Occupied;
@@ -250,18 +242,6 @@ void AHeroCharacter::PlayEActionMontage(const FName& SectionName)
 void AHeroCharacter::OnActionEnded(UAnimMontage *Montage, bool bInterrupted)
 {
 	ActionState = EActionState::EAS_Unoccupied;
-}
-
-UAnimMontage *AHeroCharacter::GetAttackAnimationByWeaponType()
-{
-	if (EquippedWeapon)
-	{
-		if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_OneHand)
-			return AttackMontage1H;
-		else if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_TwoHand)
-			return AttackMontage2H;
-	}
-    return nullptr;
 }
 
 // Called to bind functionality to input
@@ -280,12 +260,4 @@ void AHeroCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	}
 }
 
-void AHeroCharacter::SetWeaponCollisionEnabled(ECollisionEnabled::Type CollisionEnabled)
-{
-    if (EquippedWeapon && EquippedWeapon->GetWeaponBox())
-	{
-		EquippedWeapon->GetWeaponBox()->SetCollisionEnabled(CollisionEnabled);
-		EquippedWeapon->IgnoreActors.Empty();
-	}
-}
 

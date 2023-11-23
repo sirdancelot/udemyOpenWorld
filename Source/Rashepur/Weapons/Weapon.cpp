@@ -15,8 +15,9 @@ AWeapon::AWeapon()
 {
     WeaponBox = CreateDefaultSubobject<UBoxComponent>(TEXT("Weapon Box"));
     WeaponBox->SetupAttachment(GetRootComponent());
-    WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
     WeaponBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+    WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
 
     BoxTraceStart  = CreateDefaultSubobject<USceneComponent>(TEXT("Box Trace Start"));
