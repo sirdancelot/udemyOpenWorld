@@ -5,10 +5,10 @@
 #include "Components/BoxComponent.h"
 #include "Components/AttributeComponent.h"
 #include "Components/CapsuleComponent.h"
-
 #include "Kismet/GameplayStatics.h"
-
 #include "Rashepur/Weapons/Weapon.h"
+#include "Navigation/PathFollowingComponent.h"
+
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -16,6 +16,8 @@ ABaseCharacter::ABaseCharacter()
 	// Class default components setup
 	CharAttributes = CreateDefaultSubobject<UAttributeComponent>(TEXT("CharAttributes"));
 	
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+
 	//torna o status do personagem para desocupado ao final das montagens
 	EndMontageDelegate.BindUObject(this, &ABaseCharacter::OnActionEnded);
 }
@@ -37,6 +39,63 @@ void ABaseCharacter::Die()
 	DisableCapsule();
 	SelectDeathMontage();
 	SetLifeSpan(DeathLifeSpan);
+}
+
+void ABaseCharacter::MoveTo(AActor* Target, bool DrawDebugSpheresOnPath)
+{
+	//implement into child
+}
+
+FName ABaseCharacter::GetWeaponSocket(AWeapon* Weapon)
+{
+	FName WeaponSocket = FName("OneHandedSocket");
+
+	EWeaponType WeaponType = Weapon->GetWeaponType();
+	switch (WeaponType)
+	{
+	case EWeaponType::EWT_TwoHand:
+		WeaponSocket = FName("TwoHandedSocket");
+		break;
+	case EWeaponType::EWT_Throw:
+		WeaponSocket = FName("TwoHandedSocket");
+		break;
+	case EWeaponType::EWT_BothHands:
+		WeaponSocket = FName("DualHandSocket");
+		break;
+	}
+
+	return WeaponSocket;
+}
+
+FName ABaseCharacter::GetWeaponSpineSocket(AWeapon* OverlappingWeapon)
+{
+	return FName("SpineSocket");
+}
+
+void ABaseCharacter::SetCharacterStateByWeaponType()
+{
+	if (EquippedWeapon)
+	{
+		switch (EquippedWeapon->GetWeaponType())
+		{
+		case EWeaponType::EWT_OneHand:
+			CharacterState = ECharacterState::ECS_EquippedOneHandedWeapon;
+			break;
+		case EWeaponType::EWT_TwoHand:
+			CharacterState = ECharacterState::ECS_EquippedTwoHandedWeapon;
+			break;
+		case EWeaponType::EWT_Throw:
+			CharacterState = ECharacterState::ECS_EquippedThrowingWeapon;
+			break;
+		case EWeaponType::EWT_BothHands:
+			CharacterState = ECharacterState::ECS_EquippedDualHands;
+			break;
+		}
+	}
+	else
+	{
+		CharacterState = ECharacterState::ECS_Unequipped;
+	}
 }
 
 void ABaseCharacter::PlayHitReactMontage(const FName& SectionName)
@@ -90,7 +149,6 @@ void ABaseCharacter::SelectDeathMontage()
 		int32 Selection = FMath::RandRange(0, DeathMontage->GetNumSections() - 1);
 		TEnumAsByte<EDeathPose> Pose(Selection);
 		DeathPose = Pose;
-		UE_LOG(LogTemp, Warning, TEXT("Pose: %d"), Pose);
 	}
 }
 
@@ -107,6 +165,14 @@ void ABaseCharacter::PlayMontageSection(UAnimMontage* Montage, const FName& Sect
 		AnimInstance->Montage_Play(Montage, AnimationSpeed);
 		AnimInstance->Montage_JumpToSection(SectionName, Montage);
 		AnimInstance->Montage_SetEndDelegate(EndMontageDelegate);
+	}
+}
+void ABaseCharacter::StopAnimMontage(UAnimMontage* Montage)
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && Montage)
+	{
+		AnimInstance->Montage_Stop(0.1f, Montage);
 	}
 }
 
@@ -134,10 +200,18 @@ UAnimMontage* ABaseCharacter::GetAttackMontageByWeaponType()
 {
 	if (EquippedWeapon)
 	{
-		if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_OneHand)
-			return AttackMontage1H;
-		else if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_TwoHand)
-			return AttackMontage2H;
+		EWeaponType WeaponType = EquippedWeapon->GetWeaponType();
+		switch (WeaponType)
+		{
+			case EWeaponType::EWT_OneHand:
+				return AttackMontage1H;
+			case EWeaponType::EWT_TwoHand:
+				return AttackMontage2H;
+			case EWeaponType::EWT_Throw:
+				return AttackMontage1H;
+			case EWeaponType::EWT_BothHands:
+				return AttackMontage1H;
+		}
 	}
 	return nullptr;
 }
@@ -154,11 +228,7 @@ bool ABaseCharacter::CanAttack()
 
 bool ABaseCharacter::IsAlive()
 {
-	return CharAttributes&& CharAttributes->isAlive();
-}
-
-void ABaseCharacter::AttackEnd()
-{
+	return CharAttributes && CharAttributes->isAlive();
 }
 
 void ABaseCharacter::PlayHitSound(const FVector& ImpactPoint)
@@ -184,25 +254,18 @@ void ABaseCharacter::HandleDamage(float DamageAmount)
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 void ABaseCharacter::SetWeaponCollisionEnabled(ECollisionEnabled::Type CollisionEnabled)
 {
-	if (EquippedWeapon && EquippedWeapon->GetWeaponBox())
+	if (EquippedWeapon)
 	{
-		EquippedWeapon->GetWeaponBox()->SetCollisionEnabled(CollisionEnabled);
-		if (CollisionEnabled == ECollisionResponse::ECR_Ignore)
-		{
-			EquippedWeapon->GetWeaponBox()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-			
-		}
-		else 
-		{
-			EquippedWeapon->GetWeaponBox()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
-		}
-		EquippedWeapon->GetWeaponBox()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+		if (CollisionEnabled == ECollisionEnabled::NoCollision)
+			EquippedWeapon->DisableWeaponCollision();
+		else
+			EquippedWeapon->EnableWeaponCollision();
 		EquippedWeapon->IgnoreActors.Empty();
+
 	}
 }
 

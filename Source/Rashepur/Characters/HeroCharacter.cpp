@@ -11,8 +11,8 @@
 #include "GroomComponent.h"
 #include "Rashepur/Item.h"
 #include "Rashepur/Weapons/Weapon.h"
+#include "Components/StaticMeshComponent.h"
 #include "Animation/AnimMontage.h"
-#include "Components/BoxComponent.h"
 
 // Sets default values
 AHeroCharacter::AHeroCharacter()
@@ -34,6 +34,12 @@ AHeroCharacter::AHeroCharacter()
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 410, 0.f);
 
+	GetMesh()->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	GetMesh()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Overlap);
+	GetMesh()->SetGenerateOverlapEvents(true);
+
 	Hair = CreateDefaultSubobject<UGroomComponent>(TEXT("Hero Hair"));
 	Hair->SetupAttachment(GetMesh());
 	Hair->AttachmentName = FString("head");
@@ -41,8 +47,6 @@ AHeroCharacter::AHeroCharacter()
 	EyeBrows = CreateDefaultSubobject<UGroomComponent>(TEXT("Hero EyeBrows"));
 	EyeBrows->SetupAttachment(GetMesh());
 	EyeBrows->AttachmentName = FString("head");
-
-
 
 	AttackAnimationSpeed = 1.5f;
 }
@@ -68,7 +72,6 @@ void AHeroCharacter::BeginPlay()
 void AHeroCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 void AHeroCharacter::Move(const FInputActionValue &Value)
@@ -130,53 +133,8 @@ void AHeroCharacter::EKeyPressed(const FInputActionValue &Value)
 		}
 	}
 }
-void AHeroCharacter::SetCharacterStateByWeaponType()
-{
-	if (EquippedWeapon)
-	{
-		switch (EquippedWeapon->GetWeaponType())
-		{
-			case EWeaponType::EWT_OneHand:
-				CharacterState = ECharacterState::ECS_EquippedOneHandedWeapon;
-				break;
-			case EWeaponType::EWT_TwoHand:
-				CharacterState = ECharacterState::ECS_EquippedTwoHandedWeapon;
-				break;
-			case EWeaponType::EWT_Throw:
-				CharacterState = ECharacterState::ECS_EquippedThrowingWeapon;
-				break;			
-		}
-	}
-	else 
-	{
-		CharacterState = ECharacterState::ECS_Unequipped;
-	}
-}
 
-FName AHeroCharacter::GetWeaponSocket(AWeapon *Weapon)
-{
-	FName WeaponSocket = FName("OneHandedSocket");
-	
-    EWeaponType WeaponType = Weapon->GetWeaponType();
-    switch (WeaponType)
-    {
-		case EWeaponType::EWT_TwoHand:
-			CharacterState = ECharacterState::ECS_EquippedTwoHandedWeapon;
-			WeaponSocket = FName("TwoHandedSocket");
-			break;
-		case EWeaponType::EWT_Throw:
-			CharacterState = ECharacterState::ECS_EquippedThrowingWeapon;
-			WeaponSocket = FName("TwoHandedSocket");
-			break;
-    }
-	
-	return WeaponSocket;
-}
 
-FName AHeroCharacter::GetWeaponSpineSocket(AWeapon *OverlappingWeapon)
-{
-	return FName("SpineSocket");
-}
 
 bool AHeroCharacter::CanAttack()
 {
@@ -185,7 +143,8 @@ bool AHeroCharacter::CanAttack()
 
 void AHeroCharacter::Attack()
 {
-	Super::Attack();
+	if (CanAttack())
+		Super::Attack();
 }
 
 // chamados a partir do blueprint pra tirar da mão ou colocar na mão a arma do personagem
@@ -248,6 +207,12 @@ void AHeroCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		EnhancedInputComponent->BindAction(EKeyPressAction, ETriggerEvent::Triggered, this, &AHeroCharacter::EKeyPressed);
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &AHeroCharacter::Attack);
 	}
+}
+
+void AHeroCharacter::GetHit_Implementation(const FVector& ImpactPoint)
+{
+	PlayHitSound(ImpactPoint);
+	SpawnHitParticles(ImpactPoint);
 }
 
 

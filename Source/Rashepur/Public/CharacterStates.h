@@ -6,7 +6,9 @@ enum class ECharacterState : uint8
 	ECS_Unequipped UMETA(DisplayName= "Unequipped"),
 	ECS_EquippedOneHandedWeapon UMETA(DisplayName= "Equipped One-Handed Weapon"),
 	ECS_EquippedTwoHandedWeapon UMETA(DisplayName= "Equipped Two-Handed Weapon"),
-	ECS_EquippedThrowingWeapon UMETA(DisplayName= "Equipped Throwing Weapon")
+	ECS_EquippedThrowingWeapon UMETA(DisplayName= "Equipped Throwing Weapon"),
+	ECS_EquippedDualHands UMETA(DisplayName = "Equipped Dual Hands")
+
 };
 
 UENUM(BlueprintType)
@@ -31,10 +33,10 @@ enum class EDeathPose : uint8
 UENUM(BlueprintType)
 enum class EEnemyState: uint8
 {
-	EES_NoState UMETA(DisplayName = "No State"),
 	EES_Dead UMETA(DisplayName = "Dead"),
 	EES_Patrolling UMETA(DisplayName = "Patrolling"),
 	EES_Chasing UMETA(DisplayName = "Chasing"),
 	EES_Attacking UMETA(DisplayName = "Attacking"),
-	EES_Engaged UMETA(DisplayName = "Engaged")
+	EES_Engaged UMETA(DisplayName = "Engaged"),
+	EES_NoState UMETA(DisplayName = "No State")
 };

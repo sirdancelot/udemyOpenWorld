@@ -21,39 +21,52 @@ class RASHEPUR_API ABaseCharacter : public ACharacter, public IHitInterface
 public:
 	ABaseCharacter();
 	virtual void Tick(float DeltaTime) override;
-	UFUNCTION(BlueprintCallable)
-	void SetWeaponCollisionEnabled(ECollisionEnabled::Type CollisionEnabled);
 
 protected:
 	virtual void BeginPlay() override;
 	virtual void Attack();
 	virtual void Die();
-	/**
-	* Animation Montages
-	*/
-	virtual void PlayAttackMontage();
-	virtual UAnimMontage* GetAttackMontageByWeaponType();
-	FOnMontageEnded EndMontageDelegate;
-	void OnActionEnded(UAnimMontage* Montage, bool bInterrupted);
 
-	void PlayHitReactMontage(const FName& SectionName);
+	UFUNCTION(BlueprintCallable)
+	void SetWeaponCollisionEnabled(ECollisionEnabled::Type CollisionEnabled);
+
+	virtual	void MoveTo(AActor* Target, bool DrawDebugSpheresOnPath = false);
+
+	FName GetWeaponSocket(AWeapon* Weapon);
+
+	/**
+	 *	Animation Montages
+	 */
+	virtual UAnimMontage* GetAttackMontageByWeaponType();
 	void DirectionalHitReact(const FVector& ImpactPoint);
 	void SelectDeathMontage();
-	void DisableCapsule();
+	virtual void PlayAttackMontage();
+	FName GetWeaponSpineSocket(AWeapon* OverlappingWeapon);
+	void SetCharacterStateByWeaponType();
 
+	void PlayHitReactMontage(const FName& SectionName);
 	void PlayMontageSection(UAnimMontage* Montage, const FName& SectionName, float AnimationSpeed = 1.0f);
+	void StopAnimMontage(UAnimMontage* Montage);
 	FName RandomMontageSection(UAnimMontage* Montage, FString MontagePrefix);
 
+	virtual void OnActionEnded(UAnimMontage* Montage, bool bInterrupted); // callback to end montage
+
+	/** 
+	 *	Combat
+	 */
+	void DisableCapsule();
 	virtual bool CanAttack();
 	bool IsAlive();
-	UFUNCTION(BlueprintCallable)
-	virtual void AttackEnd();
-
-	void PlayHitSound(const FVector& ImpactPoint);
-	void SpawnHitParticles(const FVector& ImpactPoint);
 	virtual void HandleDamage(float DamageAmount);
 
+	/**
+	 *	Special Effects
+	 */
+	void PlayHitSound(const FVector& ImpactPoint);
+	void SpawnHitParticles(const FVector& ImpactPoint);
+
 	ECharacterState CharacterState = ECharacterState::ECS_Unequipped;
+	FOnMontageEnded EndMontageDelegate;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	float DeathLifeSpan = 10.0f;
@@ -70,6 +83,17 @@ protected:
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Weapon")
 	AWeapon* EquippedWeapon;
 
+	UPROPERTY(BlueprintReadOnly)
+	EDeathPose DeathPose = EDeathPose::EDP_Death1;
+
+	UPROPERTY(EditAnywhere, Category = "Special Effects")
+	USoundBase* HitSound;
+
+	UPROPERTY(EditAnywhere, Category = "Special Effects")
+	UParticleSystem* HitParticles;
+
+private:
+
 	/** Animation Montages */
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
 	UAnimMontage* AttackMontage1H;
@@ -82,17 +106,4 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
 	UAnimMontage* DeathMontage;
-
-	UPROPERTY(BlueprintReadOnly)
-	EDeathPose DeathPose = EDeathPose::EDP_Death1;
-
-	/*
-	* VFX
-	*/
-
-	UPROPERTY(EditAnywhere, Category = "Sounds")
-	USoundBase* HitSound;
-
-	UPROPERTY(EditAnywhere, Category = "VFX")
-	UParticleSystem* HitParticles;
 };

@@ -26,12 +26,13 @@ public:
 
 	AHeroCharacter();
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-
+	virtual void GetHit_Implementation(const FVector& ImpactPoint) override;
 
 protected:
+	/** <AActor> */
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
+	/** </AActor> */
 
 	/** 
 	 * Callback to inputs
@@ -40,26 +41,24 @@ protected:
 	void LookAround(const FInputActionValue& Value);
 	void EKeyPressed(const FInputActionValue& Value);
 
-	virtual void Attack() override;
 
 	/**
 	 * Weapon Handling
 	*/
-
-	void SetCharacterStateByWeaponType();
-	FName GetWeaponSocket(AWeapon* OverlappingWeapon);
-	FName GetWeaponSpineSocket(AWeapon* OverlappingWeapon);
-
-	virtual bool CanAttack() override;
-    bool CanEquip();
-    bool CanUnequip();
-
-    // gets called in abp_hero via notify in animation.
-    UFUNCTION(BlueprintCallable)	
+	// gets called in abp_hero via notify in animation.
+	UFUNCTION(BlueprintCallable)
 	void Disarm();
 
-	UFUNCTION(BlueprintCallable)	
+	UFUNCTION(BlueprintCallable)
 	void EquipWeapon();
+	
+	/** <ABaseCharacter> */
+	virtual void Attack() override;
+	virtual bool CanAttack() override;
+	/** </ABaseCharacter> */
+
+    bool CanEquip();
+    bool CanUnequip();
 
     /**
 	 * Animation Montages
@@ -68,6 +67,12 @@ protected:
 	void OnActionEnded(UAnimMontage* Montage, bool bInterrupted);
 	
 private: 
+	void AttachWeaponToSocket(FName Socket);
+
+	/** 
+	 *	INPUT 
+	 */
+
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputMappingContext* HeroMappingContext;
 
@@ -103,8 +108,6 @@ private:
 		
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
 	UAnimMontage* EActionMontage;
-
-    void AttachWeaponToSocket(FName Socket);
 
 public:	
 	FORCEINLINE void SetOverlappingItem(AItem* Item) { OverlappingItem = Item; }
