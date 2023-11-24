@@ -50,6 +50,8 @@ protected:
 	EEnemyState EnemyState = EEnemyState::EES_Patrolling;
 
 private:
+	void InitializeEnemy();
+
 	/** AI Navigation and control */
 	 
 	void CheckCombatTarget();

@@ -116,6 +116,7 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComponent, AActor* Oth
 
     FHitResult BoxHit;
     BoxTrace(BoxHit);
+    IgnoreActors.AddUnique(GetOwner());
 
     if (BoxHit.GetActor())
     {
@@ -147,7 +148,7 @@ void AWeapon::BoxTrace(FHitResult& BoxHit)
     const FVector End = BoxTraceEnd->GetComponentLocation();
 
     TArray<AActor*> ActorsToIgnore;
-    ActorsToIgnore.Add(this);
+    ActorsToIgnore.Add(GetOwner());
 
     for (AActor* Actor : IgnoreActors)
     {
@@ -168,6 +169,7 @@ void AWeapon::BoxTrace(FHitResult& BoxHit)
         true
     );
     IgnoreActors.AddUnique(BoxHit.GetActor());
+
 }
 
 

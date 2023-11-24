@@ -25,15 +25,13 @@ AEnemy::AEnemy()
 	HealthBarWidget->SetupAttachment(GetRootComponent());
 
 	PawnSensing = CreateDefaultSubobject<UPawnSensingComponent>(TEXT("PawnSensing"));
-	PawnSensing->SightRadius = 1800;
-	PawnSensing->SetPeripheralVisionAngle(45.f);
+	PawnSensing->SightRadius = 2600;
+	PawnSensing->SetPeripheralVisionAngle(90.f);
  
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
-
-	Tags.Add("Enemy");
 	EndMontageDelegate.BindUObject(this, &AEnemy::OnActionEnded);
 }
 
@@ -67,59 +65,76 @@ void AEnemy::Destroyed()
 
 void AEnemy::GetHit_Implementation(const FVector& ImpactPoint)
 {
-	ShowHealthBar();
+	Super::GetHit_Implementation(ImpactPoint);
 	if (IsAlive())
-		DirectionalHitReact(ImpactPoint);
-	else
-		Die();
-
-	PlayHitSound(ImpactPoint);
-	SpawnHitParticles(ImpactPoint);
+		ShowHealthBar();
+	ClearPatrolTimer();
 }
 
 void AEnemy::OnActionEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-	Super::OnActionEnded(Montage, bInterrupted);
+	ActionState = EActionState::EAS_Unoccupied;
 	EnemyState = EEnemyState::EES_NoState;
+	if (bDebugStates)
+		UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_NoState Enemy (OnActionEnded)"));
+	if (bDebugStates)
+		UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Unoccupied Enemy (OnActionEnded)"));
 }
 
 void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
-	EnemyController = Cast<AAIController>(GetController());
-
 	if (HealthBarWidget)	
 		HealthBarWidget->SetHealthPercent(CharAttributes->GetHealthPercent());
-		
-	HideHealthBar();
-	MoveTo(PatrolTarget);
-	if (PawnSensing) 
+	if (PawnSensing)
 		PawnSensing->OnSeePawn.AddDynamic(this, &AEnemy::PawnSeen);
+	InitializeEnemy();
+	MoveTo(PatrolTarget);
+}
+
+void AEnemy::InitializeEnemy()
+{
+	EnemyController = Cast<AAIController>(GetController());
+	HideHealthBar();
 	EquipDefaultWeapon();
+	Tags.Add("Enemy");
 }
 
 void AEnemy::Die()
 {
 	Super::Die();
-	EnemyState = EEnemyState::EES_Dead;
-	ClearAttackTimer();
 	HideHealthBar();
+	if (ActionState == EActionState::EAS_Attacking)
+	{
+		StopAnimMontage(GetAttackMontageByWeaponType());
+	}
+	SetWeaponCollisionEnabled(ECollisionEnabled::NoCollision);
+	EnemyState = EEnemyState::EES_Dead;
+
+	if (bDebugStates)
+		UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_Dead Enemy (die)"));
 }
 
 void AEnemy::Attack()
 {
 	if (CanAttack())
 	{
-		EnemyState = EEnemyState::EES_Engaged;
 		Super::Attack();
+		EnemyState = EEnemyState::EES_Engaged;
+		if (bDebugStates)
+			UE_LOG(LogTemp, Warning, TEXT("Set EnemyState para EES_Engaged (attack)"));
+	}		
+	else
+	{
+		if (bDebugStates)
+			UE_LOG(LogTemp, Warning, TEXT("Nao pode atacar (attack)"));
 	}
 }
 
 bool AEnemy::CanAttack()
 {
-	bool bCanAttack =
-		IsInsideAttackRadius() &&
-		ActionState != EActionState::EAS_Occupied &&
+	bool bCanAttack =		
+		ActionState == EActionState::EAS_Unoccupied &&
 		IsAlive();
 	return bCanAttack;
 }
@@ -137,13 +152,6 @@ void AEnemy::HandleDamage(float DamageAmount)
 	{
 		HealthBarWidget->SetHealthPercent(CharAttributes->GetHealthPercent());
 	}
-	if (IsEngaged())
-	{
-		StopAnimMontage(GetAttackMontageByWeaponType());
-		EnemyState = EEnemyState::EES_NoState;
-		ActionState = EActionState::EAS_Unoccupied;
-		CheckCombatTarget();
-	}
 }
 
 void AEnemy::MoveTo(AActor* Target, bool DrawDebugSpheresOnPath)
@@ -152,10 +160,9 @@ void AEnemy::MoveTo(AActor* Target, bool DrawDebugSpheresOnPath)
 	{
 		FAIMoveRequest MoveRequest;
 		MoveRequest.SetGoalActor(Target);
-		MoveRequest.SetAcceptanceRadius(80.f);
+		MoveRequest.SetAcceptanceRadius(20.f);
 		FNavPathSharedPtr NavPath;
 		EnemyController->MoveTo(MoveRequest, &NavPath); // navpath outparameter, a gente passa o parametro e a funcao muda o valor dele
-
 		if (DrawDebugSpheresOnPath)
 		{
 			TArray<FNavPathPoint> PathPoints = NavPath->GetPathPoints();
@@ -218,11 +225,12 @@ void AEnemy::CheckCombatTarget()
 		if (!IsEngaged())
 			ChaseTarget();
 	}
-	else if (CanAttack())
+	else if (IsInsideAttackRadius() && !IsAttacking())
 	{
+		//StartAttackTimer();
 		Attack();
-		StartAttackTimer();
 	}
+
 }
 
 bool AEnemy::IsOutsideCombatRadius()
@@ -255,6 +263,8 @@ void AEnemy::ChaseTarget()
 	if (IsAlive() && !IsEngaged() && !IsAttacking())
 	{
 		EnemyState = EEnemyState::EES_Chasing;
+		if (bDebugStates)
+			UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_Chasing Enemy (ChaseTarget)"));
 		GetCharacterMovement()->MaxWalkSpeed = ChasingSpeed;
 		MoveTo(CombatTarget);
 	}
@@ -269,6 +279,8 @@ void AEnemy::LoseInterest()
 void AEnemy::StartPatrolling()
 {
 	EnemyState = EEnemyState::EES_Patrolling;
+	if (bDebugStates)
+		UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_Patrolling Enemy (Start Patrolling)"));
 	GetCharacterMovement()->MaxWalkSpeed = PatrollingSpeed;
 	MoveTo(PatrolTarget);
 }
@@ -293,8 +305,12 @@ void AEnemy::ShowHealthBar()
 void AEnemy::StartAttackTimer()
 {
 	EnemyState = EEnemyState::EES_Attacking;
+	if (bDebugStates)
+		UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_Attacking Enemy (Start Attack Timer"));
+	
 	const float AttackTime = FMath::RandRange(MinWaitBeforeAttack, MaxWaitBeforeAttack);
-	GetWorldTimerManager().SetTimer(AttackTimer, this, &AEnemy::Attack, 1.f);
+	GetWorldTimerManager().SetTimer(AttackTimer, this, &AEnemy::Attack, AttackTime);
+
 }
 
 void AEnemy::ClearAttackTimer()

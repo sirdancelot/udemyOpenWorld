@@ -28,9 +28,22 @@ void ABaseCharacter::BeginPlay()
 	
 }
 
+void ABaseCharacter::GetHit_Implementation(const FVector& ImpactPoint)
+{
+	if (IsAlive())
+		DirectionalHitReact(ImpactPoint);
+	else
+		Die();
+
+	PlayHitSound(ImpactPoint);
+	SpawnHitParticles(ImpactPoint);
+}
+
 void ABaseCharacter::Attack()
 {
-	ActionState = EActionState::EAS_Occupied;
+	ActionState = EActionState::EAS_Attacking;
+	if (bDebugStates)
+		UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Attacking BaseCharacter (Attack)"));
 	PlayAttackMontage();
 }
 
@@ -103,9 +116,10 @@ void ABaseCharacter::PlayHitReactMontage(const FName& SectionName)
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && HitReactMontage)
 	{
-		AnimInstance->Montage_Play(HitReactMontage, 1.0f);
+		AnimInstance->Montage_Play(HitReactMontage, 1.f);
 		AnimInstance->Montage_JumpToSection(SectionName, HitReactMontage);
 	}
+	//PlayMontageSection(HitReactMontage, SectionName, 1.f);
 }
 
 void ABaseCharacter::DirectionalHitReact(const FVector& ImpactPoint)
@@ -219,11 +233,13 @@ UAnimMontage* ABaseCharacter::GetAttackMontageByWeaponType()
 void ABaseCharacter::OnActionEnded(UAnimMontage* Montage, bool bInterrupted)
 {
 	ActionState = EActionState::EAS_Unoccupied;
+	if (bDebugStates)
+		UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Unoccupied BaseCharacter (onactionended)"));
 }
 
 bool ABaseCharacter::CanAttack()
 {
-	return true;
+	return (ActionState == EActionState::EAS_Unoccupied);
 }
 
 bool ABaseCharacter::IsAlive()

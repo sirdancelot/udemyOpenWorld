@@ -116,8 +116,7 @@ void AHeroCharacter::EKeyPressed(const FInputActionValue &Value)
 		OverlappingWeapon->Equip(GetMesh(), WeaponSocket, this, this);
 		OverlappingItem = nullptr; // reseta o ponteiro para o item que foi pego
 		EquippedWeapon = OverlappingWeapon;
-		SetCharacterStateByWeaponType();
-		
+		SetCharacterStateByWeaponType();		
 	}
 	else
 	{
@@ -144,7 +143,9 @@ bool AHeroCharacter::CanAttack()
 void AHeroCharacter::Attack()
 {
 	if (CanAttack())
+	{
 		Super::Attack();
+	}
 }
 
 // chamados a partir do blueprint pra tirar da mão ou colocar na mão a arma do personagem
@@ -184,6 +185,8 @@ void AHeroCharacter::PlayEActionMontage(const FName& SectionName)
 	if (EActionMontage) 
 	{
 		ActionState = EActionState::EAS_Occupied;
+		if (bDebugStates)
+			UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Occupied HeroCharacter (PlayEActionMontage)"));
 		PlayMontageSection(EActionMontage, SectionName);
 	}
 }
@@ -191,6 +194,8 @@ void AHeroCharacter::PlayEActionMontage(const FName& SectionName)
 void AHeroCharacter::OnActionEnded(UAnimMontage *Montage, bool bInterrupted)
 {
 	ActionState = EActionState::EAS_Unoccupied;
+	if (bDebugStates)
+		UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Unoccupied HeroCharacter (OnActionEnded)"));
 }
 
 // Called to bind functionality to input
@@ -211,8 +216,7 @@ void AHeroCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 void AHeroCharacter::GetHit_Implementation(const FVector& ImpactPoint)
 {
-	PlayHitSound(ImpactPoint);
-	SpawnHitParticles(ImpactPoint);
+	Super::GetHit_Implementation(ImpactPoint);
 }
 
 

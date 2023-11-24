@@ -24,6 +24,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void GetHit_Implementation(const FVector& ImpactPoint);
 	virtual void Attack();
 	virtual void Die();
 
@@ -92,8 +93,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Special Effects")
 	UParticleSystem* HitParticles;
 
-private:
+	UPROPERTY(EditDefaultsOnly, Category = "Debug")
+	bool bDebugStates = false;
 
+private:
 	/** Animation Montages */
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
 	UAnimMontage* AttackMontage1H;
