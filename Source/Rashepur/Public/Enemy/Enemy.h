@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CharacterStates.h"
 #include "Characters/BaseCharacter.h"
 #include "Enemy.generated.h"
 
@@ -25,8 +26,10 @@ public:
 	/** </AActor> */
 
 	/** <IHitInterface> */
-	virtual void GetHit_Implementation(const FVector& ImpactPoint) override;
+	virtual void GetHit_Implementation(const FVector& ImpactPoint, AActor* Hitter) override;
+
 	/** </IHitInterface> */
+
 
 protected:
 	/** <ABaseCharacter> */
@@ -35,6 +38,7 @@ protected:
 	virtual void Die() override;
 	virtual void Attack() override;
 	virtual bool CanAttack() override;
+
 	virtual void PlayAttackMontage() override;
 	virtual void HandleDamage(float DamageAmount) override;
 	virtual void MoveTo(AActor* Target, bool DrawDebugSpheresOnPath = false) override;
@@ -46,24 +50,37 @@ protected:
 	UFUNCTION() // se for ser usado como delegate precisa de ufunction
 	void PawnSeen(APawn* SeenPawn);
 
+	
+
 	UPROPERTY(BlueprintReadOnly)
 	EEnemyState EnemyState = EEnemyState::EES_Patrolling;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Combat")
+	AActor* CombatTarget;
+
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	float MoveAcceptanceRadius = 20.f;
 
 private:
 	void InitializeEnemy();
 
 	/** AI Navigation and control */
-	 
+	void Stagger();
+	void StaggerRecover();
+	bool IsStaggered() const;
+	void StartStaggerRecoverTimer();
+	void ClearStaggerRecoverTimer();
+
 	void CheckCombatTarget();
 	void CheckPatrolTarget();
 	
-	bool IsOutsideCombatRadius();
-	bool IsOutsideAttackRadius();
+	bool IsOutsideCombatRadius() const;
+	bool IsOutsideAttackRadius() const;
+		
+	bool IsInsideAttackRadius() const;
 
-	bool IsInsideAttackRadius();
-
-	bool IsAttacking();
-	bool IsChasing();
+	bool IsAttacking() const;
+	bool IsChasing() const;
 	void ChaseTarget();
 
 	void LoseInterest();
@@ -77,12 +94,14 @@ private:
 	void ClearAttackTimer();
 	void PatrolTimerFinished();
 
-	bool IsDead();
-	bool IsEngaged();
+	bool IsDead() const;
+	bool IsEngaged() const;
+
+
 
 	AActor* ChoosePatrolTarget();
 
-	bool InTargetRange(AActor* Target, double Radius);
+	bool InTargetRange(AActor* Target, double Radius) const;
 
 	/*
 	* Components
@@ -106,8 +125,11 @@ private:
 	UPROPERTY()
 	class AAIController* EnemyController;
 
-	UPROPERTY()
-	AActor* CombatTarget;
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	float MinWaitBeforeStaggerRecover = 0.5f;
+
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	float MaxWaitBeforeStaggerRecover = 1.f;
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float MinWaitBeforeAttack = 0.5f;
@@ -128,6 +150,8 @@ private:
 	 * AI Behaviour
 	 */
 
+	
+	FTimerHandle StaggerTimer;
 	FTimerHandle PatrolTimer;
 
 	UPROPERTY(EditInstanceOnly, Category = "AI Navigation", BlueprintReadWrite, meta = (AllowPrivateAccess))
@@ -147,5 +171,7 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "AI Navigation")
 	float ChasingSpeed = 300.f;
+public:
+	FORCEINLINE EEnemyState GetEnemyState() const { return EnemyState; }
 
 };

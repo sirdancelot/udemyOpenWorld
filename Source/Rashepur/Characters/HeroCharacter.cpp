@@ -168,13 +168,13 @@ void AHeroCharacter::AttachWeaponToSocket(FName Socket)
 	} 
 }
 
-bool AHeroCharacter::CanEquip()
+bool AHeroCharacter::CanEquip() const
 {
     return ActionState == EActionState::EAS_Unoccupied 
 			&& EquippedWeapon;
 }
 
-bool AHeroCharacter::CanUnequip()
+bool AHeroCharacter::CanUnequip() const
 {
     return ActionState == EActionState::EAS_Unoccupied 
 			&& CharacterState != ECharacterState::ECS_Unequipped;
@@ -214,9 +214,9 @@ void AHeroCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	}
 }
 
-void AHeroCharacter::GetHit_Implementation(const FVector& ImpactPoint)
+void AHeroCharacter::GetHit_Implementation(const FVector& ImpactPoint, AActor* Hitter)
 {
-	Super::GetHit_Implementation(ImpactPoint);
+	Super::GetHit_Implementation(ImpactPoint, Hitter);
 }
 
 

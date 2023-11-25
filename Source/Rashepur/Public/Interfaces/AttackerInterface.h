@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
-#include "HitInterface.generated.h"
+#include "AttackerInterface.generated.h"
 
 // This class does not need to be modified.
 UINTERFACE(MinimalAPI)
-class UHitInterface : public UInterface
+class UAttackerInterface : public UInterface
 {
 	GENERATED_BODY()
 };
@@ -16,12 +16,16 @@ class UHitInterface : public UInterface
 /**
  * 
  */
-class RASHEPUR_API IHitInterface
+class RASHEPUR_API IAttackerInterface
 {
 	GENERATED_BODY()
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
 	UFUNCTION(BlueprintNativeEvent)
-	void GetHit(const FVector& ImpactPoint, AActor* Hitter);
+	void NotifyEnableWeaponCollision();
+
+	UFUNCTION(BlueprintNativeEvent)
+	void NotifyDisableWeaponCollision();
+
 };

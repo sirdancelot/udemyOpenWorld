@@ -26,7 +26,7 @@ public:
 
 	AHeroCharacter();
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	virtual void GetHit_Implementation(const FVector& ImpactPoint) override;
+	virtual void GetHit_Implementation(const FVector& ImpactPoint, AActor* Hitter) override;
 
 protected:
 	/** <AActor> */
@@ -57,8 +57,8 @@ protected:
 	virtual bool CanAttack() override;
 	/** </ABaseCharacter> */
 
-    bool CanEquip();
-    bool CanUnequip();
+    bool CanEquip() const;
+    bool CanUnequip() const;
 
     /**
 	 * Animation Montages

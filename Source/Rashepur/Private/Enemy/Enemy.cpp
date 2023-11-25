@@ -63,22 +63,49 @@ void AEnemy::Destroyed()
 	}
 }
 
-void AEnemy::GetHit_Implementation(const FVector& ImpactPoint)
+void AEnemy::GetHit_Implementation(const FVector& ImpactPoint, AActor* Hitter)
 {
-	Super::GetHit_Implementation(ImpactPoint);
+	Super::GetHit_Implementation(ImpactPoint, Hitter);
 	if (IsAlive())
+	{
 		ShowHealthBar();
+		if (!IsStaggered())
+			Stagger();
+	}
 	ClearPatrolTimer();
+}
+
+void AEnemy::Stagger()
+{
+	if (IsAttacking())
+	{
+		StopAnimMontage(GetAttackMontageByWeaponType());
+	}
+	EnemyState = EEnemyState::EES_Staggered;
+	
+	if (bDebugStates)
+		UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_Stagger Enemy (Stagger)"));
+	StartStaggerRecoverTimer();
 }
 
 void AEnemy::OnActionEnded(UAnimMontage* Montage, bool bInterrupted)
 {
+	if (IsAttacking()) // se foi chamado durante um ataque
+	{
+		EnemyState = EEnemyState::EES_Chasing;
+		if (bDebugStates)
+			UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_Chasing Enemy (OnActionEnded)"));
+	}
+	else 
+	{
+		EnemyState = EEnemyState::EES_NoState;
+		if (bDebugStates)
+			UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_NoState Enemy (OnActionEnded)"));
+	}
 	ActionState = EActionState::EAS_Unoccupied;
-	EnemyState = EEnemyState::EES_NoState;
-	if (bDebugStates)
-		UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_NoState Enemy (OnActionEnded)"));
 	if (bDebugStates)
 		UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Unoccupied Enemy (OnActionEnded)"));
+
 }
 
 void AEnemy::BeginPlay()
@@ -124,19 +151,20 @@ void AEnemy::Attack()
 		if (bDebugStates)
 			UE_LOG(LogTemp, Warning, TEXT("Set EnemyState para EES_Engaged (attack)"));
 	}		
-	else
-	{
-		if (bDebugStates)
-			UE_LOG(LogTemp, Warning, TEXT("Nao pode atacar (attack)"));
-	}
 }
 
 bool AEnemy::CanAttack()
 {
-	bool bCanAttack =		
+	bool bCanAttack =
 		ActionState == EActionState::EAS_Unoccupied &&
+		!IsStaggered() &&
 		IsAlive();
 	return bCanAttack;
+}
+
+bool AEnemy::IsStaggered() const
+{
+	return EnemyState == EEnemyState::EES_Staggered;
 }
 
 void AEnemy::PlayAttackMontage()
@@ -160,7 +188,7 @@ void AEnemy::MoveTo(AActor* Target, bool DrawDebugSpheresOnPath)
 	{
 		FAIMoveRequest MoveRequest;
 		MoveRequest.SetGoalActor(Target);
-		MoveRequest.SetAcceptanceRadius(20.f);
+		MoveRequest.SetAcceptanceRadius(MoveAcceptanceRadius);
 		FNavPathSharedPtr NavPath;
 		EnemyController->MoveTo(MoveRequest, &NavPath); // navpath outparameter, a gente passa o parametro e a funcao muda o valor dele
 		if (DrawDebugSpheresOnPath)
@@ -197,6 +225,7 @@ void AEnemy::EquipDefaultWeapon()
 void AEnemy::PawnSeen(APawn* SeenPawn)
 {
 	const bool bShouldChaseTarget =
+		EnemyState != EEnemyState::EES_Staggered &&
 		EnemyState != EEnemyState::EES_Dead &&
 		EnemyState != EEnemyState::EES_Engaged &&
 		ActionState != EActionState::EAS_Occupied &&
@@ -210,50 +239,61 @@ void AEnemy::PawnSeen(APawn* SeenPawn)
 	}
 }
 
+void AEnemy::StaggerRecover()
+{
+	ActionState = EActionState::EAS_Unoccupied;
+	EnemyState = EEnemyState::EES_NoState;
+	if (bDebugStates)
+		UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_NoState Enemy (StaggerRecover)"));
+	if (bDebugStates)
+		UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Unoccupied Enemy (StaggerRecover)"));
+	CheckCombatTarget();
+}
+
 void AEnemy::CheckCombatTarget()
 {
-	if (IsOutsideCombatRadius())
+	if (IsOutsideCombatRadius() && !IsStaggered())
 	{
 		ClearAttackTimer();
 		LoseInterest();
 		if (!IsEngaged()) 
 			StartPatrolling();
 	}
-	else if (IsOutsideAttackRadius() && !IsChasing())
+	else if (!IsOutsideCombatRadius() && IsOutsideAttackRadius() && !IsStaggered() && !IsChasing())
 	{
 		ClearAttackTimer();
 		if (!IsEngaged())
-			ChaseTarget();
+			ChaseTarget(); // seta pra chasing
 	}
-	else if (IsInsideAttackRadius() && !IsAttacking())
+	else if (IsInsideAttackRadius() && !IsEngaged() && !IsStaggered() && !IsAttacking())
 	{
-		//StartAttackTimer();
-		Attack();
+		EnemyState = EEnemyState::EES_Engaged;
+		StartAttackTimer();
+		//Attack();
 	}
-
 }
 
-bool AEnemy::IsOutsideCombatRadius()
+bool AEnemy::IsOutsideCombatRadius() const
 {
 	return !InTargetRange(CombatTarget, CombatRadius);
 }
 
-bool AEnemy::IsOutsideAttackRadius()
+bool AEnemy::IsOutsideAttackRadius() const
 {
 	return !InTargetRange(CombatTarget, AttackRadius);
 }
 
-bool AEnemy::IsInsideAttackRadius()
+bool AEnemy::IsInsideAttackRadius() const
 {
 	return InTargetRange(CombatTarget, AttackRadius);
 }
 
-bool AEnemy::IsAttacking()
+bool AEnemy::IsAttacking() const
 {
 	return EnemyState == EEnemyState::EES_Attacking;
 }
 
-bool AEnemy::IsChasing()
+bool AEnemy::IsChasing() const
 {
 	return EnemyState == EEnemyState::EES_Chasing;
 }
@@ -285,7 +325,7 @@ void AEnemy::StartPatrolling()
 	MoveTo(PatrolTarget);
 }
 
-void AEnemy::ClearPatrolTimer()
+void AEnemy::ClearPatrolTimer() 
 {
 	GetWorldTimerManager().ClearTimer(PatrolTimer);
 }
@@ -323,14 +363,25 @@ void AEnemy::PatrolTimerFinished()
 	MoveTo(PatrolTarget);
 }
 
-bool AEnemy::IsDead()
+bool AEnemy::IsDead() const
 {
 	return EnemyState == EEnemyState::EES_Dead;
 }
 
-bool AEnemy::IsEngaged()
+bool AEnemy::IsEngaged() const
 {
 	return EnemyState == EEnemyState::EES_Engaged;
+}
+
+void AEnemy::StartStaggerRecoverTimer()
+{
+	const float StaggerTime = FMath::RandRange(MinWaitBeforeStaggerRecover, MaxWaitBeforeStaggerRecover);
+	GetWorldTimerManager().SetTimer(StaggerTimer, this, &AEnemy::StaggerRecover, StaggerTime);
+}
+
+void AEnemy::ClearStaggerRecoverTimer()
+{
+	GetWorldTimerManager().ClearTimer(StaggerTimer);
 }
 
 AActor* AEnemy::ChoosePatrolTarget()
@@ -349,7 +400,7 @@ AActor* AEnemy::ChoosePatrolTarget()
     return nullptr;
 }
 
-bool AEnemy::InTargetRange(AActor *Target, double Radius)
+bool AEnemy::InTargetRange(AActor *Target, double Radius) const
 {
 	if (Target == nullptr) return false;
 	double DistanceToTarget = (Target->GetActorLocation() - GetActorLocation()).Size();
