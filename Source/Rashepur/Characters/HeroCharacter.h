@@ -28,6 +28,8 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetHit_Implementation(const FVector& ImpactPoint, AActor* Hitter) override;
 
+
+
 protected:
 	/** <AActor> */
 	virtual void BeginPlay() override;
@@ -40,7 +42,17 @@ protected:
 	void Move(const FInputActionValue& Value);
 	void LookAround(const FInputActionValue& Value);
 	void EKeyPressed(const FInputActionValue& Value);
+	void LockTarget(const FInputActionValue& Value);
 
+	/**
+	 *  Target Locking
+	 */
+	UFUNCTION() // se for ser usado como delegate precisa de ufunction
+	void AddPawnToTargetList(APawn* SeenPawn);
+	TArray<APawn*> TargetList;
+
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	double TargetListRadius = 300;
 
 	/**
 	 * Weapon Handling
@@ -69,6 +81,8 @@ protected:
 private: 
 	void AttachWeaponToSocket(FName Socket);
 
+
+
 	/** 
 	 *	INPUT 
 	 */
@@ -81,6 +95,9 @@ private:
 	
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* LookAroundAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* TargetLockAction;
 
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* JumpAction;

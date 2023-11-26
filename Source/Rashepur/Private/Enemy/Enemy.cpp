@@ -23,10 +23,6 @@ AEnemy::AEnemy()
 
 	HealthBarWidget = CreateDefaultSubobject<UHealthBarComponent>(TEXT("HealthBarDisplay"));
 	HealthBarWidget->SetupAttachment(GetRootComponent());
-
-	PawnSensing = CreateDefaultSubobject<UPawnSensingComponent>(TEXT("PawnSensing"));
-	PawnSensing->SightRadius = 2600;
-	PawnSensing->SetPeripheralVisionAngle(90.f);
  
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	bUseControllerRotationYaw = false;
@@ -96,7 +92,7 @@ void AEnemy::OnActionEnded(UAnimMontage* Montage, bool bInterrupted)
 		if (bDebugStates)
 			UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_Chasing Enemy (OnActionEnded)"));
 	}
-	else 
+	else if (!IsStaggered()) // a hit montage nao pode recuperar do stagger, tem que ser o clearstagger
 	{
 		EnemyState = EEnemyState::EES_NoState;
 		if (bDebugStates)

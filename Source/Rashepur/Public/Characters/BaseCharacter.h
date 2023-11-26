@@ -11,6 +11,7 @@
 class AWeapon;
 class UAnimMontage;
 class UAttributeComponent;
+class UPawnSensingComponent;
 
 
 UCLASS()
@@ -45,6 +46,11 @@ protected:
 	FName GetWeaponSpineSocket(AWeapon* OverlappingWeapon);
 	void SetCharacterStateByWeaponType();
 
+	UFUNCTION(BlueprintCallable)
+	FVector GetTranslationWarpTarget();
+	UFUNCTION(BlueprintCallable)
+	FVector GetRotationWarpTarget();
+
 	void PlayHitReactMontage(const FName& SectionName);
 	void PlayMontageSection(UAnimMontage* Montage, const FName& SectionName, float AnimationSpeed = 1.0f);
 	void StopAnimMontage(UAnimMontage* Montage);
@@ -69,11 +75,20 @@ protected:
 	ECharacterState CharacterState = ECharacterState::ECS_Unequipped;
 	FOnMontageEnded EndMontageDelegate;
 
+	UPROPERTY(VisibleAnywhere)
+	UPawnSensingComponent* PawnSensing;
+	
+	UPROPERTY(BlueprintReadWrite)
+	EActionState ActionState = EActionState::EAS_Unoccupied;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	float DeathLifeSpan = 10.0f;
 
-	UPROPERTY(BlueprintReadWrite)
-	EActionState ActionState = EActionState::EAS_Unoccupied;
+	UPROPERTY(BlueprintReadOnly, Category = "Combat")
+	AActor* CombatTarget;
+
+	UPROPERTY(EditAnywhere, Category = "Combat");
+	double WarpTargetOffset = 75.f; 
 
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"), Category = "Combat")
 	float AttackAnimationSpeed = 1.0f;

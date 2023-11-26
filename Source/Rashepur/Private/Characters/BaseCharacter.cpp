@@ -5,6 +5,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/AttributeComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Perception/PawnSensingComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Rashepur/Weapons/Weapon.h"
 #include "Navigation/PathFollowingComponent.h"
@@ -17,6 +18,10 @@ ABaseCharacter::ABaseCharacter()
 	CharAttributes = CreateDefaultSubobject<UAttributeComponent>(TEXT("CharAttributes"));
 	
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+
+	PawnSensing = CreateDefaultSubobject<UPawnSensingComponent>(TEXT("PawnSensing"));
+	PawnSensing->SightRadius = 2600;
+	PawnSensing->SetPeripheralVisionAngle(90.f);
 
 	//torna o status do personagem para desocupado ao final das montagens
 	EndMontageDelegate.BindUObject(this, &ABaseCharacter::OnActionEnded);
@@ -109,6 +114,27 @@ void ABaseCharacter::SetCharacterStateByWeaponType()
 	{
 		CharacterState = ECharacterState::ECS_Unequipped;
 	}
+}
+
+// Give a location near the combat target (distanciated by WarpTargetOffset from the combat target, towards the actor)
+FVector ABaseCharacter::GetTranslationWarpTarget() 
+{
+	if (!CombatTarget) return FVector();
+
+	const FVector CombatTargetLocation = CombatTarget->GetActorLocation();
+	const FVector Location = GetActorLocation();
+	
+	FVector TargetToMe = (Location - CombatTargetLocation).GetSafeNormal();
+	TargetToMe *= WarpTargetOffset;
+
+	return CombatTargetLocation + TargetToMe;
+
+}
+
+FVector ABaseCharacter::GetRotationWarpTarget()
+{
+	if (!CombatTarget) return FVector();
+	return CombatTarget->GetActorLocation();
 }
 
 void ABaseCharacter::PlayHitReactMontage(const FName& SectionName)

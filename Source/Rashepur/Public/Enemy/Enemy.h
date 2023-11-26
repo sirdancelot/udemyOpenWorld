@@ -9,7 +9,7 @@
 
 
 class UHealthBarComponent;
-class UPawnSensingComponent;
+
 
 UCLASS()
 class RASHEPUR_API AEnemy : public ABaseCharacter
@@ -55,8 +55,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly)
 	EEnemyState EnemyState = EEnemyState::EES_Patrolling;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Combat")
-	AActor* CombatTarget;
+
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float MoveAcceptanceRadius = 20.f;
@@ -109,9 +108,6 @@ private:
 
 	UPROPERTY(VisibleAnywhere)
 	UHealthBarComponent* HealthBarWidget;
-
-	UPROPERTY(VisibleAnywhere)
-	UPawnSensingComponent* PawnSensing;
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class AWeapon> DefaultWeaponClass;
