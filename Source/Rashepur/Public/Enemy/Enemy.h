@@ -95,8 +95,18 @@ private:
 
 	bool IsDead() const;
 	bool IsEngaged() const;
+	bool IsSearching() const;
+	bool IsOcuppied() const;
+	bool CanSeeTarget(APawn* Target) const;
+	void SearchForTarget();
+	void EngageTarget();
 
+	void StartSearchTimer(float Duration);
+	void ClearSearchTimer();
+	void SearchTimerFinished();
 
+	virtual void StopSearchingForTarget() override;
+	void StopAllActions();
 
 	AActor* ChoosePatrolTarget();
 
@@ -116,6 +126,7 @@ private:
 	 * Combat
 	 */
 
+	FTimerHandle SearchTimer;
 	FTimerHandle AttackTimer;
 
 	UPROPERTY()
@@ -141,6 +152,11 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	double PatrolRadius = 200.f;
+
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	float SearchAnimationLoopNTimes = 5.f;
+
+
 
 	/**
 	 * AI Behaviour

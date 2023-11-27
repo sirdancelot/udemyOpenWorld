@@ -45,14 +45,16 @@ protected:
 	virtual void PlayAttackMontage();
 	FName GetWeaponSpineSocket(AWeapon* OverlappingWeapon);
 	void SetCharacterStateByWeaponType();
-
+	virtual void StopSearchingForTarget();
 	UFUNCTION(BlueprintCallable)
 	FVector GetTranslationWarpTarget();
 	UFUNCTION(BlueprintCallable)
 	FVector GetRotationWarpTarget();
 
+	void PlaySearchMontage();
+	float GetSearchMontageLength();
 	void PlayHitReactMontage(const FName& SectionName);
-	void PlayMontageSection(UAnimMontage* Montage, const FName& SectionName, float AnimationSpeed = 1.0f);
+	void PlayMontageSection(UAnimMontage* Montage, const FName& SectionName, float AnimationSpeed = 1.0f, bool SetEndDelegate = true);
 	void StopAnimMontage(UAnimMontage* Montage);
 	FName RandomMontageSection(UAnimMontage* Montage, FString MontagePrefix);
 
@@ -72,20 +74,21 @@ protected:
 	void PlayHitSound(const FVector& ImpactPoint);
 	void SpawnHitParticles(const FVector& ImpactPoint);
 
+	UPROPERTY(BlueprintReadOnly, Category = "States")
 	ECharacterState CharacterState = ECharacterState::ECS_Unequipped;
 	FOnMontageEnded EndMontageDelegate;
 
 	UPROPERTY(VisibleAnywhere)
 	UPawnSensingComponent* PawnSensing;
 	
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, Category = "States")
 	EActionState ActionState = EActionState::EAS_Unoccupied;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	float DeathLifeSpan = 10.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
-	AActor* CombatTarget;
+	APawn* CombatTarget;
 
 	UPROPERTY(EditAnywhere, Category = "Combat");
 	double WarpTargetOffset = 75.f; 
@@ -124,4 +127,7 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
 	UAnimMontage* DeathMontage;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Montages")
+	UAnimMontage* SearchMontage;
 };

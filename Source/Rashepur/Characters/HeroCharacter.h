@@ -42,17 +42,6 @@ protected:
 	void Move(const FInputActionValue& Value);
 	void LookAround(const FInputActionValue& Value);
 	void EKeyPressed(const FInputActionValue& Value);
-	void LockTarget(const FInputActionValue& Value);
-
-	/**
-	 *  Target Locking
-	 */
-	UFUNCTION() // se for ser usado como delegate precisa de ufunction
-	void AddPawnToTargetList(APawn* SeenPawn);
-	TArray<APawn*> TargetList;
-
-	UPROPERTY(EditAnywhere, Category = "Combat")
-	double TargetListRadius = 300;
 
 	/**
 	 * Weapon Handling
@@ -80,8 +69,6 @@ protected:
 	
 private: 
 	void AttachWeaponToSocket(FName Socket);
-
-
 
 	/** 
 	 *	INPUT 

@@ -47,8 +47,6 @@ void ABaseCharacter::GetHit_Implementation(const FVector& ImpactPoint, AActor* H
 void ABaseCharacter::Attack()
 {
 	ActionState = EActionState::EAS_Attacking;
-	if (bDebugStates)
-		UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Attacking BaseCharacter (Attack)"));
 	PlayAttackMontage();
 }
 
@@ -116,6 +114,12 @@ void ABaseCharacter::SetCharacterStateByWeaponType()
 	}
 }
 
+void ABaseCharacter::StopSearchingForTarget()
+{
+	if (SearchMontage)
+		StopAnimMontage(SearchMontage);
+}
+
 // Give a location near the combat target (distanciated by WarpTargetOffset from the combat target, towards the actor)
 FVector ABaseCharacter::GetTranslationWarpTarget() 
 {
@@ -137,15 +141,23 @@ FVector ABaseCharacter::GetRotationWarpTarget()
 	return CombatTarget->GetActorLocation();
 }
 
+
+
+void ABaseCharacter::PlaySearchMontage()
+{
+	PlayMontageSection(SearchMontage, FName("LookAround"), 1.f);
+}
+
+float ABaseCharacter::GetSearchMontageLength()
+{
+	if (SearchMontage)
+		return SearchMontage->GetSectionLength(0);
+	return 0.0f;
+}
+
 void ABaseCharacter::PlayHitReactMontage(const FName& SectionName)
 {
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && HitReactMontage)
-	{
-		AnimInstance->Montage_Play(HitReactMontage, 1.f);
-		AnimInstance->Montage_JumpToSection(SectionName, HitReactMontage);
-	}
-	//PlayMontageSection(HitReactMontage, SectionName, 1.f);
+	PlayMontageSection(HitReactMontage, SectionName, 1.f, false);
 }
 
 void ABaseCharacter::DirectionalHitReact(const FVector& ImpactPoint)
@@ -197,14 +209,15 @@ void ABaseCharacter::DisableCapsule()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-void ABaseCharacter::PlayMontageSection(UAnimMontage* Montage, const FName& SectionName, float AnimationSpeed)
+void ABaseCharacter::PlayMontageSection(UAnimMontage* Montage, const FName& SectionName, float AnimationSpeed, bool SetEndDelegate)
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && Montage)
 	{
 		AnimInstance->Montage_Play(Montage, AnimationSpeed);
 		AnimInstance->Montage_JumpToSection(SectionName, Montage);
-		AnimInstance->Montage_SetEndDelegate(EndMontageDelegate);
+		if (SetEndDelegate)
+			AnimInstance->Montage_SetEndDelegate(EndMontageDelegate);
 	}
 }
 void ABaseCharacter::StopAnimMontage(UAnimMontage* Montage)

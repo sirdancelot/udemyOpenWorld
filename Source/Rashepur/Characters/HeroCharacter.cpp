@@ -68,12 +68,6 @@ void AHeroCharacter::BeginPlay()
 	}
 	// marca o heroi pra ser reconhecido pelo monstro
 	Tags.Add(FName("Hero")); 
-	if (PawnSensing)
-	{
-		PawnSensing->bOnlySensePlayers = false;
-		PawnSensing->bSeePawns = true;
-		PawnSensing->OnSeePawn.AddDynamic(this, &AHeroCharacter::AddPawnToTargetList);
-	}
 }
 
 
@@ -82,18 +76,7 @@ void AHeroCharacter::BeginPlay()
 void AHeroCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	//update targetlist
-	for (APawn* Pawn : TargetList)
-	{
-		double DistanceToTarget = (Pawn->GetActorLocation() - GetActorLocation()).Size();
-		if (DistanceToTarget > TargetListRadius)
-		{
-			TargetList.Remove(Pawn);
-			if (CombatTarget == Pawn)
-				CombatTarget = nullptr;
-			UE_LOG(LogTemp, Warning, TEXT("Removeu ator %s"), *(Pawn->GetName()));
-		}
-	}
+
 }
 
 void AHeroCharacter::Move(const FInputActionValue &Value)
@@ -152,45 +135,6 @@ void AHeroCharacter::EKeyPressed(const FInputActionValue &Value)
 			PlayEActionMontage("Equip");
 			SetCharacterStateByWeaponType();
 		}
-	}
-}
-// create a method that receives an array and return the next value
-
-
-
-
-
-// quando apertar T vai marcar um alvo da lista
-void AHeroCharacter::LockTarget(const FInputActionValue& Value)
-{
-	// todo -> get combat target to set its location to the motion warp of echo
-	// entra e sai do combate lock
-	if (TargetList.Num() > 0) // se tem ao menos um alvo
-	{
-		if (!CombatTarget) {
-			CombatTarget = TargetList[0];
-		}
-		else if (CombatTarget == TargetList[0])
-		{
-			
-		}
-	}
-	if (CombatTarget)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Alvo fixado: %s"), *(CombatTarget->GetName()));
-	} 
-	else
-	{ 
-		UE_LOG(LogTemp, Warning, TEXT("Sem alvo pra fixar"));
-	}
-	
-}
-
-void AHeroCharacter::AddPawnToTargetList(APawn* SeenPawn)
-{
-	if (SeenPawn->ActorHasTag("Enemy"))
-	{
-		TargetList.AddUnique(SeenPawn);
 	}
 }
 
@@ -271,7 +215,6 @@ void AHeroCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(EKeyPressAction, ETriggerEvent::Triggered, this, &AHeroCharacter::EKeyPressed);
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &AHeroCharacter::Attack);
-		EnhancedInputComponent->BindAction(TargetLockAction, ETriggerEvent::Triggered, this, &AHeroCharacter::LockTarget);
 
 	}
 }
