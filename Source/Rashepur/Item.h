@@ -23,6 +23,7 @@ class RASHEPUR_API AItem : public AActor
 public:	
 	// Sets default values for this actor's properties
 	AItem();
+
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -63,8 +64,13 @@ protected:
 	USphereComponent* Sphere;
 
 	UPROPERTY(EditAnywhere)
-	UNiagaraComponent* EmbersEffect;
+	UNiagaraComponent* ItemEffect;
 
+private:
+	void InitializeItem();
+public:
+	FORCEINLINE void SetItemState(EItemState NewState) { ItemState = NewState; }
+	FORCEINLINE EItemState GetItemState() { return ItemState; }
 };
 
 template<typename T>

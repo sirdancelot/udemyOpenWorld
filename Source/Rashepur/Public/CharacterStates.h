@@ -7,8 +7,9 @@ enum class ECharacterState : uint8
 	ECS_EquippedOneHandedWeapon UMETA(DisplayName= "Equipped One-Handed Weapon"),
 	ECS_EquippedTwoHandedWeapon UMETA(DisplayName= "Equipped Two-Handed Weapon"),
 	ECS_EquippedThrowingWeapon UMETA(DisplayName= "Equipped Throwing Weapon"),
-	ECS_EquippedDualHands UMETA(DisplayName = "Equipped Dual Hands")
-
+	ECS_EquippedDualHands UMETA(DisplayName = "Equipped Dual Hands"),
+	ECS_Dead UMETA(DisplayName = "Dead"),
+	ECS_MAX UMETA(DisplayName = "DefaultMax")
 };
 
 UENUM(BlueprintType)

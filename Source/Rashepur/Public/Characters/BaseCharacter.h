@@ -14,6 +14,7 @@ class UAttributeComponent;
 class UPawnSensingComponent;
 
 
+
 UCLASS()
 class RASHEPUR_API ABaseCharacter : public ACharacter, public IHitInterface
 {
@@ -25,9 +26,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	virtual void GetHit_Implementation(const FVector& ImpactPoint, AActor* Hitter) override;
-	virtual void Attack();
-	virtual void Die();
+
 
 	UFUNCTION(BlueprintCallable)
 	void SetWeaponCollisionEnabled(ECollisionEnabled::Type CollisionEnabled);
@@ -40,7 +39,7 @@ protected:
 	 *	Animation Montages
 	 */
 	virtual UAnimMontage* GetAttackMontageByWeaponType();
-	void DirectionalHitReact(const FVector& ImpactPoint);
+	UAnimInstance* DirectionalHitReact(const FVector& ImpactPoint);
 	void SelectDeathMontage();
 	virtual void PlayAttackMontage();
 	FName GetWeaponSpineSocket(AWeapon* OverlappingWeapon);
@@ -53,8 +52,8 @@ protected:
 
 	void PlaySearchMontage();
 	float GetSearchMontageLength();
-	void PlayHitReactMontage(const FName& SectionName);
-	void PlayMontageSection(UAnimMontage* Montage, const FName& SectionName, float AnimationSpeed = 1.0f, bool SetEndDelegate = true);
+	UAnimInstance* PlayHitReactMontage(const FName& SectionName);
+	UAnimInstance* PlayMontageSection(UAnimMontage* Montage, const FName& SectionName, float AnimationSpeed = 1.0f, bool SetEndDelegate = true);
 	void StopAnimMontage(UAnimMontage* Montage);
 	FName RandomMontageSection(UAnimMontage* Montage, FString MontagePrefix);
 
@@ -63,16 +62,27 @@ protected:
 	/** 
 	 *	Combat
 	 */
-	void DisableCapsule();
+	/** <AActor> */
+	virtual void GetHit_Implementation(const FVector& ImpactPoint, AActor* Hitter) override;
+	/** </AActor> */
+
+	virtual void Attack();
+	bool IsCombatTargetDead();
 	virtual bool CanAttack();
-	bool IsAlive();
 	virtual void HandleDamage(float DamageAmount);
+	virtual void Die();
+	bool IsAlive();
+	virtual bool IsUnocuppied();
+	void DisableCapsule();	
+	void ResetPeripheralVision();
 
 	/**
 	 *	Special Effects
 	 */
 	void PlayHitSound(const FVector& ImpactPoint);
 	void SpawnHitParticles(const FVector& ImpactPoint);
+
+	
 
 	UPROPERTY(BlueprintReadOnly, Category = "States")
 	ECharacterState CharacterState = ECharacterState::ECS_Unequipped;
@@ -114,7 +124,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Debug")
 	bool bDebugStates = false;
 
+	const float DefaultPeripheralVision = 85.f;
+
 private:
+
 	/** Animation Montages */
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
 	UAnimMontage* AttackMontage1H;

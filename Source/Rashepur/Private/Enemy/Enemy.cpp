@@ -10,6 +10,8 @@
 #include "Rashepur/Weapons/Weapon.h"
 #include "HUD/HealthBarComponent.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Math/UnrealMathUtility.h"
 
 AEnemy::AEnemy()
 {
@@ -29,19 +31,40 @@ AEnemy::AEnemy()
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 	EndMontageDelegate.BindUObject(this, &AEnemy::OnActionEnded);
+	HitReactEndedDelegate.BindUObject(this, &AEnemy::TurnToPlayer);
 }
 
 void AEnemy::Tick(float DeltaTime)
 {
+	if (IsDead() || IsStaggered()) return;
+
 	Super::Tick(DeltaTime);
-	if (IsDead()) return;
 	if (EnemyState > EEnemyState::EES_Patrolling)
 	{
 		CheckCombatTarget();
+		if (IsSearching() && !IsOutsideCombatRadius())
+			ExpandSight(DeltaTime);
 	} 
 	else
 	{
 		CheckPatrolTarget();
+	}
+}
+void AEnemy::TurnToPlayer(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (CombatTarget && !CanSeeTarget(CombatTarget))
+	{
+		FRotator LookAround = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), CombatTarget->GetActorLocation());
+		SetActorRotation(LookAround);
+	}
+}
+
+void AEnemy::ExpandSight(float DeltaTime)
+{
+	if (PawnSensing && PawnSensing->GetPeripheralVisionAngle() <= (DefaultPeripheralVision*2))
+	{
+		float SightExpansionSpeed = 7.f;
+		PawnSensing->SetPeripheralVisionAngle(PawnSensing->GetPeripheralVisionAngle() + DeltaTime * SightExpansionSpeed);
 	}
 }
 
@@ -63,14 +86,24 @@ void AEnemy::Destroyed()
 
 void AEnemy::GetHit_Implementation(const FVector& ImpactPoint, AActor* Hitter)
 {
-	Super::GetHit_Implementation(ImpactPoint, Hitter);
-	if (IsAlive())
+	UAnimInstance* HitAnimInstance;
+	if (IsAlive() && Hitter)
 	{
 		ShowHealthBar();
 		if (!IsStaggered())
 			Stagger();
+		HitAnimInstance = DirectionalHitReact(Hitter->GetActorLocation());
+		HitAnimInstance->Montage_SetEndDelegate(HitReactEndedDelegate);
 	}
+	else
+		Die();
+
+	PlayHitSound(ImpactPoint);
+	SpawnHitParticles(ImpactPoint);
+
 	ClearPatrolTimer();
+	ClearAttackTimer();
+	ClearSearchTimer();
 }
 
 void AEnemy::Stagger()
@@ -85,15 +118,20 @@ void AEnemy::Stagger()
 
 void AEnemy::OnActionEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-	if (!IsStaggered() && !IsSearching()) // a hit montage nao pode recuperar do stagger, tem que ser o clearstagger
+	if (!IsStaggered() && !IsSearching() && !IsDead())
 	{
-		EnemyState = EEnemyState::EES_NoState;
-		ActionState = EActionState::EAS_Unoccupied;
-		if (bDebugStates)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_NoState Enemy (OnActionEnded)"));
-			UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Unoccupied Enemy (OnActionEnded)"));
-		}
+		ClearStates();
+	}
+}
+
+void AEnemy::ClearStates()
+{
+	EnemyState = EEnemyState::EES_NoState;
+	ActionState = EActionState::EAS_Unoccupied;
+	if (bDebugStates)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_NoState Enemy (OnActionEnded)"));
+		UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Unoccupied Enemy (OnActionEnded)"));
 	}
 }
 
@@ -118,9 +156,9 @@ void AEnemy::InitializeEnemy()
 
 void AEnemy::Die()
 {
+	StopAllActions();
 	Super::Die();
 	HideHealthBar();
-	StopAllActions();
 	SetWeaponCollisionEnabled(ECollisionEnabled::NoCollision);
 	EnemyState = EEnemyState::EES_Dead;
 
@@ -130,10 +168,10 @@ void AEnemy::Die()
 
 void AEnemy::Attack()
 {
-	Super::Attack();
-	ActionState = EActionState::EAS_Attacking;
-	if (bDebugStates)
-		UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Attacking BaseCharacter (Attack)"));
+	if (!IsCombatTargetDead())
+	{
+		Super::Attack();
+	}
 }
 
 bool AEnemy::CanAttack()
@@ -224,7 +262,9 @@ void AEnemy::PawnSeen(APawn* SeenPawn)
 	{
 		CombatTarget = SeenPawn;
 		ClearPatrolTimer();
-		ChaseTarget();
+		if (!IsCombatTargetDead()) {
+			ChaseTarget();
+		}
 	}
 }
 
@@ -236,35 +276,65 @@ void AEnemy::StaggerRecover()
 		UE_LOG(LogTemp, Warning, TEXT("EnemyState set to EES_NoState Enemy (StaggerRecover)"));
 	if (bDebugStates)
 		UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Unoccupied Enemy (StaggerRecover)"));
-	CheckCombatTarget();
 }
 
 void AEnemy::CheckCombatTarget()
 {
-	if (IsStaggered() ) return;
-
 	if (IsOutsideCombatRadius())
 	{
 		ClearAttackTimer();
 		LoseInterest();
+		ResetPeripheralVision();
 		if (!IsEngaged()) 
 			StartPatrolling();
 	}
-	else if (!IsOutsideCombatRadius() && IsOutsideAttackRadius() && !IsChasing() && !IsSearching() && CanSeeTarget(CombatTarget))
+	else if (CanChase())
 	{
 		ClearAttackTimer();
 		if (!IsEngaged())
 			ChaseTarget(); // seta pra chasing
 	}
-	else if (!IsOutsideCombatRadius() && !IsAttacking() && !IsSearching() && !CanSeeTarget(CombatTarget))
+	else if (CanSearch())
 	{
 		SearchForTarget();
 	}
-	else if (IsInsideAttackRadius() && !IsEngaged() && !IsAttacking() && CanSeeTarget(CombatTarget) && !IsSearching())
+	else if (CanEngage())
 	{
 		EngageTarget();
 	} 
+	else if (IsCombatTargetDead() && !IsPatrolling())
+	{
+		ClearAttackTimer();
+		LoseInterest();
+		ResetPeripheralVision();
+		StartPatrolling();
+	}
+}
 
+bool AEnemy::CanEngage()
+{
+	return IsInsideAttackRadius() && 
+		!IsEngaged() && 
+		!IsAttacking() && 
+		CanSeeTarget(CombatTarget) && 
+		!IsSearching();
+}
+
+bool AEnemy::CanSearch()
+{
+	return !IsOutsideCombatRadius() && 
+		!IsAttacking() && 
+		!IsSearching() && !
+		CanSeeTarget(CombatTarget);
+}
+
+bool AEnemy::CanChase()
+{
+	return !IsOutsideCombatRadius() && 
+		IsOutsideAttackRadius() && 
+		!IsChasing() && 
+		!IsSearching() && 
+		CanSeeTarget(CombatTarget);
 }
 
 
@@ -286,6 +356,11 @@ bool AEnemy::IsInsideAttackRadius() const
 bool AEnemy::IsAttacking() const
 {
 	return ActionState == EActionState::EAS_Attacking;
+}
+
+bool AEnemy::IsPatrolling() const
+{
+	return EnemyState == EEnemyState::EES_Patrolling;
 }
 
 bool AEnemy::IsChasing() const
@@ -376,11 +451,6 @@ bool AEnemy::IsSearching() const
 	return EnemyState == EEnemyState::EES_Searching;
 }
 
-bool AEnemy::IsOcuppied() const
-{
-	return ActionState == EActionState::EAS_Unoccupied;
-}
-
 bool AEnemy::CanSeeTarget(APawn* Target) const
 {
 	if (Target == nullptr) return false;
@@ -394,6 +464,7 @@ void AEnemy::SearchForTarget()
 {
 	ActionState = EActionState::EAS_Occupied;
 	EnemyState = EEnemyState::EES_Searching;
+
 	ClearAttackTimer();
 	if (bDebugStates)
 		UE_LOG(LogTemp, Display, TEXT("EnemyState set to EES_Searching Enemy (CheckCombatTarget)"));
@@ -426,27 +497,21 @@ void AEnemy::ClearSearchTimer()
 void AEnemy::SearchTimerFinished()
 {
 	StopSearchingForTarget();
-	StartPatrolling();	
+	StartPatrolling();
 }
 
 void AEnemy::StopSearchingForTarget()
 {
 	Super::StopSearchingForTarget();
-	ClearSearchTimer();	
+	ClearSearchTimer();
 }
 
 void AEnemy::StopAllActions()
 {
 	if (IsAttacking())
-	{
-		ClearAttackTimer();
 		StopAnimMontage(GetAttackMontageByWeaponType());
-	}
 	if (IsSearching())
-	{
-		ClearSearchTimer();
 		StopSearchingForTarget();
-	}
 }
 
 void AEnemy::StartStaggerRecoverTimer()

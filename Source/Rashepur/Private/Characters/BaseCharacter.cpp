@@ -21,7 +21,7 @@ ABaseCharacter::ABaseCharacter()
 
 	PawnSensing = CreateDefaultSubobject<UPawnSensingComponent>(TEXT("PawnSensing"));
 	PawnSensing->SightRadius = 2600;
-	PawnSensing->SetPeripheralVisionAngle(90.f);
+	PawnSensing->SetPeripheralVisionAngle(DefaultPeripheralVision);
 
 	//torna o status do personagem para desocupado ao final das montagens
 	EndMontageDelegate.BindUObject(this, &ABaseCharacter::OnActionEnded);
@@ -47,13 +47,24 @@ void ABaseCharacter::GetHit_Implementation(const FVector& ImpactPoint, AActor* H
 void ABaseCharacter::Attack()
 {
 	ActionState = EActionState::EAS_Attacking;
+	if (bDebugStates)
+		UE_LOG(LogTemp, Warning, TEXT("ActionState set to EAS_Attacking BaseCharacter (Attack)"));
 	PlayAttackMontage();
+}
+
+bool ABaseCharacter::IsCombatTargetDead()
+{
+	if (CombatTarget)
+		return CombatTarget->ActorHasTag(FName("Dead"));
+	else
+		return false;
 }
 
 void ABaseCharacter::Die()
 {
 	DisableCapsule();
 	SelectDeathMontage();
+	Tags.Add(FName("Dead"));
 	SetLifeSpan(DeathLifeSpan);
 }
 
@@ -155,12 +166,12 @@ float ABaseCharacter::GetSearchMontageLength()
 	return 0.0f;
 }
 
-void ABaseCharacter::PlayHitReactMontage(const FName& SectionName)
+UAnimInstance* ABaseCharacter::PlayHitReactMontage(const FName& SectionName)
 {
-	PlayMontageSection(HitReactMontage, SectionName, 1.f, false);
+	return PlayMontageSection(HitReactMontage, SectionName, 1.f, false);
 }
 
-void ABaseCharacter::DirectionalHitReact(const FVector& ImpactPoint)
+UAnimInstance* ABaseCharacter::DirectionalHitReact(const FVector& ImpactPoint)
 {
 	// calcula onde foi o ponto de impacto no inimigo pra saber qual montagem dar play
 	const FVector Forward = GetActorForwardVector();
@@ -191,7 +202,7 @@ void ABaseCharacter::DirectionalHitReact(const FVector& ImpactPoint)
 		Section = FName("FromLeft");
 	else if (Theta >= 45.f && Theta < 135.f)
 		Section = FName("FromRight");
-	PlayHitReactMontage(Section);
+	return PlayHitReactMontage(Section);
 }
 
 void ABaseCharacter::SelectDeathMontage()
@@ -209,7 +220,13 @@ void ABaseCharacter::DisableCapsule()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-void ABaseCharacter::PlayMontageSection(UAnimMontage* Montage, const FName& SectionName, float AnimationSpeed, bool SetEndDelegate)
+void ABaseCharacter::ResetPeripheralVision()
+{
+	if (PawnSensing)
+		PawnSensing->SetPeripheralVisionAngle(DefaultPeripheralVision);
+}
+
+UAnimInstance* ABaseCharacter::PlayMontageSection(UAnimMontage* Montage, const FName& SectionName, float AnimationSpeed, bool SetEndDelegate)
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && Montage)
@@ -218,7 +235,9 @@ void ABaseCharacter::PlayMontageSection(UAnimMontage* Montage, const FName& Sect
 		AnimInstance->Montage_JumpToSection(SectionName, Montage);
 		if (SetEndDelegate)
 			AnimInstance->Montage_SetEndDelegate(EndMontageDelegate);
+		return AnimInstance;
 	}
+	return nullptr;
 }
 void ABaseCharacter::StopAnimMontage(UAnimMontage* Montage)
 {
@@ -284,6 +303,11 @@ bool ABaseCharacter::CanAttack()
 bool ABaseCharacter::IsAlive()
 {
 	return CharAttributes && CharAttributes->isAlive();
+}
+
+bool ABaseCharacter::IsUnocuppied()
+{
+	return ActionState == EActionState::EAS_Unoccupied;
 }
 
 void ABaseCharacter::PlayHitSound(const FVector& ImpactPoint)

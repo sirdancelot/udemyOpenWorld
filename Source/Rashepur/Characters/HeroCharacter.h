@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 #include "InputActionValue.h"
 #include "Characters/BaseCharacter.h"
+#include "Interfaces/PickupInterface.h"
 #include "HeroCharacter.generated.h"
 
 class USpringArmComponent;
@@ -16,19 +17,37 @@ class UGroomComponent;
 class AItem;
 class UAnimMontage;
 class AWeapon;
+class UHUDOverlay;
+class ASoul;
+class AItem;
+
 
 UCLASS()
-class RASHEPUR_API AHeroCharacter : public ABaseCharacter
+class RASHEPUR_API AHeroCharacter : public ABaseCharacter, public IPickupInterface
 {
 	GENERATED_BODY()
 
 public:
 
 	AHeroCharacter();
+	/** <Aactor> */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	/** </Aactor> */
+
+	/** <ABaseCharacter> */
 	virtual void GetHit_Implementation(const FVector& ImpactPoint, AActor* Hitter) override;
+	virtual float TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	virtual void Die() override;
+	/** </ABaseCharacter> */
 
+	/** <ACharacter> */
+	virtual void Jump() override;
+	/** </ACharacter> */
 
+	/** <IPickupInterface> */
+	virtual void SetOverlappingItem(AItem* Item) override;
+	virtual void AddSouls(ASoul* Soul) override;
+	/** </IPickupInterface> */
 
 protected:
 	/** <AActor> */
@@ -69,6 +88,9 @@ protected:
 	
 private: 
 	void AttachWeaponToSocket(FName Socket);
+	void InitializeOverlay(APlayerController* PlayerController);
+	void SetHUDHealth();
+
 
 	/** 
 	 *	INPUT 
@@ -113,8 +135,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
 	UAnimMontage* EActionMontage;
 
+	UPROPERTY(VisibleAnywhere)
+	UHUDOverlay* HUDOverlay;
+
 public:	
-	FORCEINLINE void SetOverlappingItem(AItem* Item) { OverlappingItem = Item; }
 	FORCEINLINE ECharacterState GetCharacterState() const { return CharacterState; }
 	UFUNCTION(BlueprintPure)
 	FORCEINLINE AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }

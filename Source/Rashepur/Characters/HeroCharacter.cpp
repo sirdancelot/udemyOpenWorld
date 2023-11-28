@@ -12,8 +12,11 @@
 #include "Rashepur/Item.h"
 #include "Rashepur/Weapons/Weapon.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/AttributeComponent.h"
 #include "Animation/AnimMontage.h"
 #include "Perception/PawnSensingComponent.h"
+#include "HUD/RashepurHUD.h"
+#include "HUD/HUDOverlay.h"
 
 
 // Sets default values
@@ -57,17 +60,31 @@ AHeroCharacter::AHeroCharacter()
 void AHeroCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	// aqui tá fzendo o cast pra pegar o controlador e saber se não tá nulo, pega o jogador a partir do controle embaixo
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
+		InitializeOverlay(PlayerController);
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
 		{
-			// o jogador tem subsistemas. pega o subsistema do enhancedinput e adiciona o contexto a ele
 			Subsystem->AddMappingContext(HeroMappingContext, 0);
 		}
 	}
-	// marca o heroi pra ser reconhecido pelo monstro
 	Tags.Add(FName("Hero")); 
+}
+
+void AHeroCharacter::InitializeOverlay(APlayerController* PlayerController)
+{
+	ARashepurHUD* HUD = Cast<ARashepurHUD>(PlayerController->GetHUD());
+	if (HUD)
+	{
+		HUDOverlay = HUD->GetHUDOverlay();
+		if (HUDOverlay && CharAttributes)
+		{
+			HUDOverlay->SetHealthBarPercent(CharAttributes->GetHealthPercent());
+			HUDOverlay->SetStaminaBarPercent(1.0f);
+			HUDOverlay->SetGold(0);
+			HUDOverlay->SetSouls(0);
+		}
+	}
 }
 
 
@@ -113,8 +130,9 @@ void AHeroCharacter::EKeyPressed(const FInputActionValue &Value)
 		// se ja possuir uma arma, destruir a arma atual primeiro
 		if (EquippedWeapon)
 		{
-			EquippedWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-			
+			EquippedWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);	
+			EquippedWeapon->SetItemState(EItemState::EIS_Hovering);
+			EquippedWeapon->SetActorRotation(FRotator(0.f, 0.f, 0.f));
 			EquippedWeapon=nullptr;
 		}
         FName WeaponSocket = GetWeaponSocket(OverlappingWeapon);
@@ -222,6 +240,44 @@ void AHeroCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 void AHeroCharacter::GetHit_Implementation(const FVector& ImpactPoint, AActor* Hitter)
 {
 	Super::GetHit_Implementation(ImpactPoint, Hitter);
+}
+
+float AHeroCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	HandleDamage(DamageAmount);
+	SetHUDHealth();
+
+	return DamageAmount;
+}
+
+void AHeroCharacter::Die()
+{
+	Super::Die();
+	CharacterState = ECharacterState::ECS_Dead;
+}
+
+void AHeroCharacter::Jump()
+{
+	if (IsUnocuppied() && IsAlive())
+		Super::Jump();
+}
+
+void AHeroCharacter::SetOverlappingItem(AItem* Item)
+{
+	OverlappingItem = Item;
+}
+
+void AHeroCharacter::AddSouls(ASoul* Soul)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Add Souls: "));
+}
+
+void AHeroCharacter::SetHUDHealth()
+{
+	if (HUDOverlay && CharAttributes)
+	{
+		HUDOverlay->SetHealthBarPercent(CharAttributes->GetHealthPercent());
+	}
 }
 
 

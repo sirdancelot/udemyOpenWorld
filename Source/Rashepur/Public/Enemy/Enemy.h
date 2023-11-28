@@ -34,6 +34,7 @@ public:
 protected:
 	/** <ABaseCharacter> */
 	virtual void OnActionEnded(UAnimMontage* Montage, bool bInterrupted) override;
+	void ClearStates();
 	virtual void BeginPlay() override;
 	virtual void Die() override;
 	virtual void Attack() override;
@@ -70,7 +71,12 @@ private:
 	void StartStaggerRecoverTimer();
 	void ClearStaggerRecoverTimer();
 
+	void TurnToPlayer(UAnimMontage* Montage, bool bInterrupted);
+
 	void CheckCombatTarget();
+	bool CanEngage();
+	bool CanSearch();
+	bool CanChase();
 	void CheckPatrolTarget();
 	
 	bool IsOutsideCombatRadius() const;
@@ -79,6 +85,7 @@ private:
 	bool IsInsideAttackRadius() const;
 
 	bool IsAttacking() const;
+	bool IsPatrolling() const;
 	bool IsChasing() const;
 	void ChaseTarget();
 
@@ -96,7 +103,6 @@ private:
 	bool IsDead() const;
 	bool IsEngaged() const;
 	bool IsSearching() const;
-	bool IsOcuppied() const;
 	bool CanSeeTarget(APawn* Target) const;
 	void SearchForTarget();
 	void EngageTarget();
@@ -104,6 +110,7 @@ private:
 	void StartSearchTimer(float Duration);
 	void ClearSearchTimer();
 	void SearchTimerFinished();
+	void ExpandSight(float DeltaTime);
 
 	virtual void StopSearchingForTarget() override;
 	void StopAllActions();
@@ -111,6 +118,8 @@ private:
 	AActor* ChoosePatrolTarget();
 
 	bool InTargetRange(AActor* Target, double Radius) const;
+
+	FOnMontageEnded HitReactEndedDelegate;
 
 	/*
 	* Components
@@ -128,6 +137,7 @@ private:
 
 	FTimerHandle SearchTimer;
 	FTimerHandle AttackTimer;
+
 
 	UPROPERTY()
 	class AAIController* EnemyController;
